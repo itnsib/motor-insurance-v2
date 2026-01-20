@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, UserRole } from '@/types/auth';
 
@@ -45,41 +45,7 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({ email: '', name: '', password: '', role: 'advisor' as UserRole });
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      const data = await response.json();
-
-      if (!data.success) {
-        router.push('/');
-        return;
-      }
-
-      // Only admin can access this page
-      if (data.user.role !== 'admin') {
-        router.push('/dashboard');
-        return;
-      }
-
-      setCurrentUser(data.user);
-      await loadData();
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadData = async () => {
-    await Promise.all([loadUsers(), loadHistory()]);
-  };
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const response = await fetch('/api/users');
       const data = await response.json();
@@ -91,12 +57,12 @@ export default function AdminDashboard() {
           activeUsers: data.users.filter((u: User) => u.isActive).length,
         }));
       }
-    } catch (error) {
-      console.error('Error loading users:', error);
+    } catch (err) {
+      console.error('Error loading users:', err);
     }
-  };
+  }, []);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       const response = await fetch('/api/history');
       const data = await response.json();
@@ -114,10 +80,44 @@ export default function AdminDashboard() {
           todayComparisons: todayCount,
         }));
       }
-    } catch (error) {
-      console.error('Error loading history:', error);
+    } catch (err) {
+      console.error('Error loading history:', err);
     }
-  };
+  }, []);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([loadUsers(), loadHistory()]);
+  }, [loadUsers, loadHistory]);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+
+      if (!data.success) {
+        router.push('/');
+        return;
+      }
+
+      // Only admin can access this page
+      if (data.user.role !== 'admin') {
+        router.push('/dashboard');
+        return;
+      }
+
+      setCurrentUser(data.user);
+      await loadData();
+    } catch (err) {
+      console.error('Auth error:', err);
+      router.push('/');
+    } finally {
+      setLoading(false);
+    }
+  }, [router, loadData]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -141,8 +141,8 @@ export default function AdminDashboard() {
       } else {
         alert(data.error || 'Failed to create user');
       }
-    } catch (error) {
-      console.error('Error creating user:', error);
+    } catch (err) {
+      console.error('Error creating user:', err);
       alert('Failed to create user');
     }
   };
@@ -171,8 +171,8 @@ export default function AdminDashboard() {
       } else {
         alert(data.error || 'Failed to update user');
       }
-    } catch (error) {
-      console.error('Error updating user:', error);
+    } catch (err) {
+      console.error('Error updating user:', err);
       alert('Failed to update user');
     }
   };
@@ -192,8 +192,8 @@ export default function AdminDashboard() {
       } else {
         alert(data.error || 'Failed to delete user');
       }
-    } catch (error) {
-      console.error('Error deleting user:', error);
+    } catch (err) {
+      console.error('Error deleting user:', err);
       alert('Failed to delete user');
     }
   };
@@ -268,10 +268,10 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex gap-1">
             {[
-              { id: 'overview', label: '📊 Overview', icon: '📊' },
-              { id: 'users', label: '👥 Users', icon: '👥' },
-              { id: 'files', label: '📁 All Files', icon: '📁' },
-              { id: 'settings', label: '⚙️ Settings', icon: '⚙️' },
+              { id: 'overview', label: '📊 Overview' },
+              { id: 'users', label: '👥 Users' },
+              { id: 'files', label: '📁 All Files' },
+              { id: 'settings', label: '⚙️ Settings' },
             ].map((tab) => (
               <button
                 key={tab.id}

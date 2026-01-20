@@ -1,6 +1,7 @@
 // lib/auth.ts
 
-import { User, UserRole, AuthSession } from '@/types/auth';
+import { User, UserRole } from '@/types/auth';
+import crypto from 'crypto';
 
 // Simple JWT-like token generation (for production, use proper JWT library)
 const SECRET_KEY = process.env.AUTH_SECRET || 'nsib-motor-quote-secret-key-2024';
@@ -13,9 +14,13 @@ export function generateToken(user: User): string {
     exp: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
   };
   
-  // Base64 encode the payload (in production, use proper JWT)
-  const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
-  const signature = Buffer.from(`${base64Payload}.${SECRET_KEY}`).toString('base64').slice(0, 32);
+  // Base64 encode the payload
+  const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', SECRET_KEY)
+    .update(base64Payload)
+    .digest('base64url')
+    .slice(0, 32);
   
   return `${base64Payload}.${signature}`;
 }
@@ -25,12 +30,17 @@ export function verifyToken(token: string): { userId: string; email: string; rol
     const [base64Payload, signature] = token.split('.');
     
     // Verify signature
-    const expectedSignature = Buffer.from(`${base64Payload}.${SECRET_KEY}`).toString('base64').slice(0, 32);
+    const expectedSignature = crypto
+      .createHmac('sha256', SECRET_KEY)
+      .update(base64Payload)
+      .digest('base64url')
+      .slice(0, 32);
+    
     if (signature !== expectedSignature) {
       return null;
     }
     
-    const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+    const payload = JSON.parse(Buffer.from(base64Payload, 'base64url').toString());
     
     // Check expiration
     if (payload.exp < Date.now()) {
@@ -47,17 +57,13 @@ export function verifyToken(token: string): { userId: string; email: string; rol
   }
 }
 
-// Simple password hashing (for production, use bcrypt)
+// Proper password hashing using crypto
 export function hashPassword(password: string): string {
   const salt = 'nsib-salt-2024';
-  let hash = password + salt;
-  
-  // Simple hash function
-  for (let i = 0; i < 1000; i++) {
-    hash = Buffer.from(hash).toString('base64');
-  }
-  
-  return hash.slice(0, 64);
+  return crypto
+    .createHash('sha256')
+    .update(password + salt)
+    .digest('hex');
 }
 
 export function verifyPassword(password: string, hash: string): boolean {

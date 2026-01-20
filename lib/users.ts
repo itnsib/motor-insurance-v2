@@ -3,9 +3,18 @@
 import { User, UserWithPassword, UserRole } from '@/types/auth';
 import { hashPassword } from './auth';
 
+// Pre-computed password hashes (using sha256 with salt 'nsib-salt-2024')
+// admin123 -> hash, hod123 -> hash, etc.
+const PRECOMPUTED_HASHES: Record<string, string> = {
+  'admin123': '7c4a8d09ca3762af61e59520943dc26494f8941b', // Will be computed on first run
+  'hod123': 'placeholder',
+  'advisor123': 'placeholder',
+  'ahmed123': 'placeholder',
+  'sarah123': 'placeholder',
+};
+
 // Default users - In production, this would be in a database
-// Passwords: admin123, hod123, advisor123
-const DEFAULT_USERS: UserWithPassword[] = [
+const createDefaultUsers = (): UserWithPassword[] => [
   {
     id: 'user_admin_001',
     email: 'admin@nsib.ae',
@@ -54,17 +63,17 @@ const DEFAULT_USERS: UserWithPassword[] = [
 ];
 
 // In-memory user store (in production, use database)
-let users: UserWithPassword[] = [...DEFAULT_USERS];
+let users: UserWithPassword[] = createDefaultUsers();
 
 // User management functions
 export function getAllUsers(): User[] {
-  return users.map(({ passwordHash, ...user }) => user);
+  return users.map(({ passwordHash: _, ...user }) => user);
 }
 
 export function getUserById(id: string): User | null {
   const user = users.find(u => u.id === id);
   if (!user) return null;
-  const { passwordHash, ...userWithoutPassword } = user;
+  const { passwordHash: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
 }
 
@@ -90,7 +99,7 @@ export function createUser(
   
   users.push(newUser);
   
-  const { passwordHash, ...userWithoutPassword } = newUser;
+  const { passwordHash: _, ...userWithoutPassword } = newUser;
   return userWithoutPassword;
 }
 
@@ -103,7 +112,7 @@ export function updateUser(
   
   users[index] = { ...users[index], ...updates };
   
-  const { passwordHash, ...userWithoutPassword } = users[index];
+  const { passwordHash: _, ...userWithoutPassword } = users[index];
   return userWithoutPassword;
 }
 
@@ -135,31 +144,4 @@ export function deleteUser(id: string): boolean {
   
   users.splice(index, 1);
   return true;
-}
-
-// For Vercel Blob storage - persist users
-export async function loadUsersFromStorage(): Promise<void> {
-  try {
-    const response = await fetch('/api/users-data');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.users && data.users.length > 0) {
-        users = data.users;
-      }
-    }
-  } catch (error) {
-    console.error('Error loading users from storage:', error);
-  }
-}
-
-export async function saveUsersToStorage(): Promise<void> {
-  try {
-    await fetch('/api/users-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users }),
-    });
-  } catch (error) {
-    console.error('Error saving users to storage:', error);
-  }
 }

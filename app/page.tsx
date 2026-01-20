@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -13,12 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Check if already logged in
-  useEffect(() => {
-    checkExistingAuth();
-  }, []);
-
-  const checkExistingAuth = async () => {
+  const checkExistingAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me');
       if (response.ok) {
@@ -33,12 +28,17 @@ export default function LoginPage() {
           return;
         }
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
+    } catch (err) {
+      console.error('Auth check error:', err);
     } finally {
       setCheckingAuth(false);
     }
-  };
+  }, [router]);
+
+  // Check if already logged in
+  useEffect(() => {
+    checkExistingAuth();
+  }, [checkExistingAuth]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +64,8 @@ export default function LoginPage() {
       } else {
         setError(data.error || 'Login failed');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (err) {
+      console.error('Login error:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);

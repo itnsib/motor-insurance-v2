@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
-import { getAllUsers, createUser, updateUser, deleteUser, getUserById } from '@/lib/users';
+import { getAllUsers, createUser, updateUser, deleteUser } from '@/lib/users';
 import { hasPermission, UserRole } from '@/types/auth';
 
 // Middleware to check admin access
