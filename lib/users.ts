@@ -63,7 +63,7 @@ const createDefaultUsers = (): UserWithPassword[] => [
 ];
 
 // In-memory user store (in production, use database)
-let users: UserWithPassword[] = createDefaultUsers();
+const users: UserWithPassword[] = createDefaultUsers();
 
 // User management functions
 export function getAllUsers(): User[] {
