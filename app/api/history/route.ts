@@ -70,16 +70,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
-```
-
-6. Click **Commit changes** button
-
-7. Wait 2 minutes for Vercel to deploy
-
-8. Test: https://motor-insurance-v2.vercel.app/api/history
-
----
-
-**IMPORTANT:** Make sure line 4 says:
-```
-const HISTORY_FILE = 'nsib-history.json';
