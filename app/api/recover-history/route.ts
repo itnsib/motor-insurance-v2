@@ -38,31 +38,9 @@ export async function GET() {
 
     const newFiles = allHtmlFiles.filter(file => !existingUrls.has(file.url));
 
-    const newEntries: HistoryItem[] = newFiles.map(file => {
-      const filename = file.pathname.replace('.html', '');
-      const parts = filename.split('_');
-      const customerName = parts[1] || 'Unknown';
-      const make = parts[2] || '';
-      const model = parts[3] || '';
-      const vehicle = (make + ' ' + model).trim() || 'Unknown Vehicle';
-      const referenceNumber = parts[parts.length - 1] || '';
-
-      return {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        date: file.uploadedAt.toISOString(),
-        vehicle: vehicle,
-        customerName: customerName,
-        referenceNumber: referenceNumber,
-        fileUrl: file.url,
-        quotes: [],
-        businessType: 'Private',
-      };
-    });
-
     return NextResponse.json({
       success: true,
-      stats: { totalScanned: totalScanned, totalHtmlFiles: allHtmlFiles.length, existingCount: existingHistory.length, newFilesFound: newFiles.length },
-      preview: newEntries.slice(0, 5),
+      stats: { totalScanned, totalHtmlFiles: allHtmlFiles.length, existingCount: existingHistory.length, newFilesFound: newFiles.length },
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) });
@@ -133,10 +111,8 @@ export async function POST() {
 }
 ```
 
-### Step 2: Commit and wait for deployment
+### Step 3: Commit and deploy
 
-### Step 3: Run recovery
-
-Once deployed, visit:
+### Step 4: Run recovery
 ```
-https://motor-insurance-v2.vercel.app/api/recover-history
+GET https://motor-insurance-v2.vercel.app/api/recover-history
