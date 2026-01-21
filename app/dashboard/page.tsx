@@ -46,6 +46,35 @@ interface CompanyDefaults {
   coverageOptions: string[];
 }
 
+// ============ COMPANY LOGOS ============
+const COMPANY_LOGOS: Record<string, string> = {
+  'SUKOON': 'https://i.imgur.com/hCWlUMe.jpeg',
+  'DNI': 'https://i.imgur.com/HKXpfsU.jpeg',
+  'QATAR': 'https://i.imgur.com/5d63cLP.png',
+  'WATANIA': 'https://i.imgur.com/KaVFAu6.jpeg',
+  'ADAMJEE': 'https://i.imgur.com/dufDDqK.jpeg',
+  'FIDELITY': 'https://i.imgur.com/T26OgNE.jpeg',
+  'LIVA': 'https://i.imgur.com/BqDrkcY.jpeg',
+  'EMIRATES': 'https://i.imgur.com/8cnZRff.jpeg',
+  'RAK': 'https://i.imgur.com/HS6ctxT.png',
+  'SALAMA': 'https://i.imgur.com/Kx5sGSA.jpeg',
+  'INSURANCE HOUSE': 'https://i.imgur.com/OodWGYQ.jpeg',
+  'NEW INDIA DXB': 'https://i.imgur.com/oUeb8HP.png',
+  'METHAQ': 'https://i.imgur.com/FjNhizV.jpeg',
+  'NGI': 'https://i.imgur.com/ye6IvRS.jpeg',
+  'GIG': 'https://i.imgur.com/Kho3VbT.png',
+  'AL WATHBA': 'https://i.imgur.com/eulYgMf.jpeg',
+  'ORIENT INSRANCE': 'https://i.imgur.com/eIN9e72.png',
+  'UNION INSURANCE': 'https://i.imgur.com/sdmPCNl.jpeg',
+  'NIA ABU DHABI': 'https://i.imgur.com/oUeb8HP.png',
+  'AL SAGR': 'https://i.imgur.com/U2CmHX4.jpeg',
+  'NEW INDIA ABU DHABI': 'https://i.imgur.com/oUeb8HP.png',
+  'DNIRC': 'https://i.imgur.com/HKXpfsU.jpeg',
+  'NIA DXB': 'https://i.imgur.com/oUeb8HP.png',
+  'AL ITTIHAD AL WATANI': 'https://i.imgur.com/UpraA62.jpeg',
+  'METHAQ (ind. pickup)': 'https://i.imgur.com/FjNhizV.jpeg',
+};
+
 // ============ CONSTANTS FROM GOOGLE SHEETS ============
 const VEHICLE_MAKES = [
   'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi', 'BAIC Motor', 'Bentley', 'Bestune', 'BMW',
@@ -189,14 +218,14 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
     'RAK': {
       repairType: 'Non-Agency',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
-      omanCover: 'YES',
+      omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 2500',
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'SALAMA': {
       repairType: 'Non-Agency',
       thirdPartyLiability: 'UPTO AED 2 Million',
-      omanCover: 'YES',
+      omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 3000',
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
@@ -210,14 +239,14 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
     'METHAQ': {
       repairType: 'Agency/Non-Agency',
       thirdPartyLiability: 'UPTO AED 2 Million',
-      omanCover: 'YES',
+      omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 2000',
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'NGI': {
       repairType: 'Agency/Non-Agency',
       thirdPartyLiability: 'UPTO AED 2 Million',
-      omanCover: 'YES',
+      omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 1500',
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
@@ -238,7 +267,7 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
     'UNION INSURANCE': {
       repairType: 'Agency/Non-Agency',
       thirdPartyLiability: 'UPTO AED 2 Million',
-      omanCover: 'YES',
+      omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 5000',
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
@@ -274,7 +303,22 @@ const generateReferenceNumber = (): string => {
   return `${last4}${random2}`;
 };
 
-// ============ HTML GENERATOR ============
+// Helper function to get current user's name
+const getCurrentUserName = (): string => {
+  if (typeof window === 'undefined') return 'Unknown';
+  try {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      return user.name || user.email || 'Unknown';
+    }
+  } catch (e) {
+    console.error('Error getting user name:', e);
+  }
+  return 'Unknown';
+};
+
+// ============ HTML GENERATOR WITH LOGOS ============
 function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: string[], referenceNumber: string): string {
   return `<!DOCTYPE html>
 <html>
@@ -315,6 +359,8 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
         .footer-contact strong { display: block; margin-bottom: 0.5mm; color: #fff !important; font-size: 9.5px; }
+        .company-logo { height: 10mm; max-width: 25mm; object-fit: contain; margin-bottom: 1mm; background: #fff; padding: 1mm; border-radius: 2mm; }
+        .company-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     </style>
 </head>
@@ -337,14 +383,20 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
             <thead>
                 <tr>
                     <th>BENEFITS</th>
-                    ${sortedQuotes.map((q) => `
+                    ${sortedQuotes.map((q) => {
+                      const logoUrl = COMPANY_LOGOS[q.company] || '';
+                      return `
                         <th>
-                            <div style="font-size: 10px; margin-bottom: 1mm; color: #fff;">${q.company.length > 30 ? q.company.substring(0, 27) + '...' : q.company}</div>
-                            ${q.productType ? `<div style="font-size: 9px; color: #fff; margin-bottom: 1mm;">${q.productType}</div>` : ''}
-                            ${q.isRenewal ? '<div class="renewal-badge">RENEWAL</div>' : ''}
-                            ${q.isRecommended ? '<div class="recommended-badge">RECOMMENDED</div>' : ''}
+                            <div class="company-header-cell">
+                                ${logoUrl ? `<img src="${logoUrl}" alt="${q.company}" class="company-logo">` : ''}
+                                <div style="font-size: 10px; color: #fff;">${q.company.length > 30 ? q.company.substring(0, 27) + '...' : q.company}</div>
+                                ${q.productType ? `<div style="font-size: 9px; color: #fff; margin-top: 1mm;">${q.productType}</div>` : ''}
+                                ${q.isRenewal ? '<div class="renewal-badge">RENEWAL</div>' : ''}
+                                ${q.isRecommended ? '<div class="recommended-badge">RECOMMENDED</div>' : ''}
+                            </div>
                         </th>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </tr>
             </thead>
             <tbody>
@@ -464,19 +516,6 @@ export default function App() {
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
 
   const insuranceCompanies = businessType === 'Private' ? PRIVATE_INSURANCE_COMPANIES : COMMERCIAL_INSURANCE_COMPANIES;
-  const getCurrentUserName = (): string => {
-  if (typeof window === 'undefined') return 'Unknown';
-  try {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      return user.name || user.email || 'Unknown';
-    }
-  } catch (e) {
-    console.error('Error getting user name:', e);
-  }
-  return 'Unknown';
-};
   const hasProductTypes = Boolean(formData.insuranceCompany && COMPANY_PRODUCT_TYPES[formData.insuranceCompany]);
 
   const handlePremiumChange = (premium: number) => {
@@ -530,8 +569,6 @@ export default function App() {
       alert('Please select a Product Type for this company');
       return;
     }
-
-    // Advisor comment is now optional - removed validation
 
     const newQuote: Quote = {
       id: Date.now().toString(),
@@ -641,14 +678,14 @@ export default function App() {
       // Save to localStorage AND cloud
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       const newComparison: SavedComparison = {
-       id: Date.now().toString(),
-       date: new Date().toISOString(),
-       vehicle: `${quotes[0].make} ${quotes[0].model}`,
-       quotes: quotes,
-       referenceNumber: referenceNumber,
-       fileUrl: result.url,
-       createdBy: getCurrentUserName(),
-       };
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        vehicle: `${quotes[0].make} ${quotes[0].model}`,
+        quotes: quotes,
+        referenceNumber: referenceNumber,
+        fileUrl: result.url,
+        createdBy: getCurrentUserName(),
+      };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
 
@@ -656,7 +693,7 @@ export default function App() {
       await fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history: savedHistory }),
+        body: JSON.stringify({ item: newComparison }),
       });
       
       alert(`✅ Success!\n\n📥 File downloaded: ${fileName}\n🔗 Online URL: ${result.url}\n\nYou can continue editing quotes or start a new comparison.`);
@@ -668,13 +705,13 @@ export default function App() {
       // Still save to history without URL
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       const newComparison: SavedComparison = {
-       id: Date.now().toString(),
-       date: new Date().toISOString(),
-       vehicle: `${quotes[0].make} ${quotes[0].model}`,
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        vehicle: `${quotes[0].make} ${quotes[0].model}`,
         quotes: quotes,
         referenceNumber: referenceNumber,
         createdBy: getCurrentUserName(),
-        };
+      };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
     }
@@ -1119,6 +1156,9 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                   <th className="bg-gray-200 p-2 border text-left sticky left-0 z-30 min-w-[150px] text-gray-900">Field</th>
                   {sortedQuotes.map((q) => (
                     <th key={q.id} className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 border text-center min-w-[180px]">
+                      {COMPANY_LOGOS[q.company] && (
+                        <img src={COMPANY_LOGOS[q.company]} alt={q.company} className="h-8 mx-auto mb-1 bg-white rounded p-1" />
+                      )}
                       <div className="font-bold text-sm mb-1">{q.company}</div>
                       {q.productType && <div className="text-xs mb-1 opacity-90">{q.productType.substring(0, 30)}{q.productType.length > 30 ? '...' : ''}</div>}
                       <div className="text-base font-bold">AED {q.total.toFixed(2)}</div>
@@ -1436,19 +1476,15 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/history');
+      const response = await fetch('/api/history?t=' + Date.now());
       const result = await response.json();
       
-      if (result.success && result.history.length > 0) {
+      if (result.success && result.history && result.history.length > 0) {
         setHistory(result.history);
         localStorage.setItem('quotesHistory', JSON.stringify(result.history));
       } else {
         const localHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
         setHistory(localHistory);
-        
-        if (localHistory.length > 0) {
-          await saveHistoryToCloud(localHistory);
-        }
       }
     } catch (error) {
       console.error('Error loading history:', error);
@@ -1459,35 +1495,17 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     }
   };
 
-  const saveHistoryToCloud = async (historyData: SavedComparison[]) => {
-    try {
-      await fetch('/api/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history: historyData }),
-      });
-    } catch (error) {
-      console.error('Error saving history to cloud:', error);
-    }
-  };
-
   const deleteComparison = async (id: string) => {
     if (!confirm('Delete this comparison?')) return;
-    const updated = history.filter(h => h.id !== id);
-    setHistory(updated);
-    localStorage.setItem('quotesHistory', JSON.stringify(updated));
-    await saveHistoryToCloud(updated);
-  };
-
-  const downloadComparison = (comparison: SavedComparison) => {
-    const sortedQuotes = [...comparison.quotes].sort((a, b) => a.total - b.total);
-    const allCoverageOptions = [...new Set(comparison.quotes.flatMap(q => q.coverageOptions))];
     
-    const htmlContent = generateHTMLContentHelper(sortedQuotes, allCoverageOptions, comparison.referenceNumber);
-    const fileName = `NSIB_${comparison.quotes[0].customerName.replace(/\s/g, '_')}_${comparison.quotes[0].make}_${comparison.quotes[0].model}_${comparison.referenceNumber}.html`;
-    
-    downloadHTMLFile(htmlContent, fileName);
-    alert(`✅ Downloaded: ${fileName}`);
+    try {
+      await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
+      const updated = history.filter(h => h.id !== id);
+      setHistory(updated);
+      localStorage.setItem('quotesHistory', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error deleting:', error);
+    }
   };
 
   const formatDate = (isoString: string) => {
@@ -1506,18 +1524,9 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     if (!searchTerm.trim()) return true;
     
     const search = searchTerm.toLowerCase().trim();
-    
-    // Search by customer name (from quotes or from comparison)
-    const customerName = comparison.quotes?.[0]?.customerName?.toLowerCase() || 
-                         (comparison as unknown as { customerName?: string }).customerName?.toLowerCase() || '';
-    
-    // Search by enquiry number (from quotes or from comparison)
+    const customerName = comparison.quotes?.[0]?.customerName?.toLowerCase() || '';
     const enquiryNumber = comparison.quotes?.[0]?.enquiryNumber?.toLowerCase() || '';
-    
-    // Search by reference number
     const referenceNumber = comparison.referenceNumber?.toLowerCase() || '';
-    
-    // Search by vehicle
     const vehicle = comparison.vehicle?.toLowerCase() || '';
     
     return customerName.includes(search) || 
@@ -1559,7 +1568,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
             placeholder="🔍 Search by Customer Name, Enquiry Number, or Reference..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-             className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none text-gray-900 bg-white"
+            className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none text-gray-900 bg-white"
           />
           {searchTerm && (
             <button
@@ -1590,19 +1599,19 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
           {filteredHistory.map(comparison => (
             <div key={comparison.id} className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border-2 border-gray-200 hover:border-indigo-400 transition shadow-sm hover:shadow-md">
               <div className="mb-3">
-  <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
-  {comparison.createdBy && (
-    <div className="text-xs text-orange-600">👤 Created by: {comparison.createdBy}</div>
-  )}
-  {comparison.quotes?.[0]?.customerName && (
-    <div className="text-sm text-gray-700">Customer: {comparison.quotes[0].customerName}</div>
-  )}
-  {comparison.quotes?.[0]?.enquiryNumber && (
-    <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
-  )}
-  <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
-  <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
-</div>
+                <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
+                {comparison.createdBy && (
+                  <div className="text-xs text-orange-600">👤 Created by: {comparison.createdBy}</div>
+                )}
+                {comparison.quotes?.[0]?.customerName && (
+                  <div className="text-sm text-gray-700">Customer: {comparison.quotes[0].customerName}</div>
+                )}
+                {comparison.quotes?.[0]?.enquiryNumber && (
+                  <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
+                )}
+                <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
+                <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
+              </div>
               
               <div className="mb-3">
                 <div className="text-sm text-gray-700 mb-2"><strong>Quotes:</strong> {comparison.quotes?.length || 0}</div>
@@ -1634,12 +1643,6 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
                     🔗 View
                   </a>
                 )}
-                <button 
-                  onClick={() => downloadComparison(comparison)} 
-                  className="flex-1 bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-purple-700 transition"
-                >
-                  📥
-                </button>
                 <button onClick={() => deleteComparison(comparison.id)} className="bg-red-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-red-700 transition">
                   🗑️
                 </button>
