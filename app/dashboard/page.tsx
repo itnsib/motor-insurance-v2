@@ -464,6 +464,19 @@ export default function App() {
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
 
   const insuranceCompanies = businessType === 'Private' ? PRIVATE_INSURANCE_COMPANIES : COMMERCIAL_INSURANCE_COMPANIES;
+  const getCurrentUserName = (): string => {
+  if (typeof window === 'undefined') return 'Unknown';
+  try {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      return user.name || user.email || 'Unknown';
+    }
+  } catch (e) {
+    console.error('Error getting user name:', e);
+  }
+  return 'Unknown';
+};
   const hasProductTypes = Boolean(formData.insuranceCompany && COMPANY_PRODUCT_TYPES[formData.insuranceCompany]);
 
   const handlePremiumChange = (premium: number) => {
@@ -634,7 +647,7 @@ export default function App() {
        quotes: quotes,
        referenceNumber: referenceNumber,
        fileUrl: result.url,
-       createdBy: typeof window !== 'undefined' ? (localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Unknown') : 'Unknown',
+       createdBy: getCurrentUserName(),
        };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
@@ -660,7 +673,7 @@ export default function App() {
        vehicle: `${quotes[0].make} ${quotes[0].model}`,
         quotes: quotes,
         referenceNumber: referenceNumber,
-        createdBy: typeof window !== 'undefined' ? (localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Unknown') : 'Unknown',
+        createdBy: getCurrentUserName(),
         };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
