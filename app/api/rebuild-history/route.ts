@@ -131,3 +131,12 @@ export async function POST() {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
+```
+
+### Step 2: Commit and wait for deployment
+
+### Step 3: Run recovery
+
+Once deployed, visit:
+```
+https://motor-insurance-v2.vercel.app/api/recover-history
