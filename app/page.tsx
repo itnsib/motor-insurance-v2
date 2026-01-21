@@ -156,32 +156,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-500 text-center mb-4">Demo Credentials</p>
-            <div className="grid grid-cols-1 gap-2 text-xs">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">Admin:</span>
-                  <span className="text-gray-600">admin@nsib.ae / admin123</span>
-                </div>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">HOD:</span>
-                  <span className="text-gray-600">hod@nsib.ae / hod123</span>
-                </div>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">Advisor:</span>
-                  <span className="text-gray-600">advisor@nsib.ae / advisor123</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Footer */}
         <p className="text-center text-indigo-200 text-sm mt-6">
           © 2024 New Shield Insurance Brokers L.L.C.

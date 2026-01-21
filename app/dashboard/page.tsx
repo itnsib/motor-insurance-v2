@@ -35,6 +35,7 @@ interface SavedComparison {
   quotes: Quote[];
   referenceNumber: string;
   fileUrl?: string;
+  createdBy?: string;
 }
 
 interface CompanyDefaults {
@@ -653,12 +654,14 @@ export default function App() {
       // Still save to history without URL
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       const newComparison: SavedComparison = {
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        vehicle: `${quotes[0].make} ${quotes[0].model}`,
-        quotes: quotes,
-        referenceNumber: referenceNumber,
-      };
+  id: Date.now().toString(),
+  date: new Date().toISOString(),
+  vehicle: `${quotes[0].make} ${quotes[0].model}`,
+  quotes: quotes,
+  referenceNumber: referenceNumber,
+  fileUrl: result.url,
+  createdBy: user?.name || user?.email || 'Unknown',  // Add this line
+};
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
     }
@@ -1543,7 +1546,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
             placeholder="🔍 Search by Customer Name, Enquiry Number, or Reference..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
+             className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none text-gray-900 bg-white"
           />
           {searchTerm && (
             <button
@@ -1574,16 +1577,19 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
           {filteredHistory.map(comparison => (
             <div key={comparison.id} className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border-2 border-gray-200 hover:border-indigo-400 transition shadow-sm hover:shadow-md">
               <div className="mb-3">
-                <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
-                {comparison.quotes?.[0]?.customerName && (
-                  <div className="text-sm text-gray-700">👤 {comparison.quotes[0].customerName}</div>
-                )}
-                {comparison.quotes?.[0]?.enquiryNumber && (
-                  <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
-                )}
-                <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
-                <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
-              </div>
+  <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
+  {comparison.createdBy && (
+    <div className="text-xs text-orange-600">👤 Created by: {comparison.createdBy}</div>
+  )}
+  {comparison.quotes?.[0]?.customerName && (
+    <div className="text-sm text-gray-700">Customer: {comparison.quotes[0].customerName}</div>
+  )}
+  {comparison.quotes?.[0]?.enquiryNumber && (
+    <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
+  )}
+  <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
+  <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
+</div>
               
               <div className="mb-3">
                 <div className="text-sm text-gray-700 mb-2"><strong>Quotes:</strong> {comparison.quotes?.length || 0}</div>
