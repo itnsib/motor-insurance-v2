@@ -634,7 +634,7 @@ export default function App() {
        quotes: quotes,
        referenceNumber: referenceNumber,
        fileUrl: result.url,
-       createdBy: user?.name || user?.email || 'Unknown',
+       createdBy: typeof window !== 'undefined' ? (localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Unknown') : 'Unknown',
        };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
@@ -655,13 +655,13 @@ export default function App() {
       // Still save to history without URL
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       const newComparison: SavedComparison = {
-  id: Date.now().toString(),
-  date: new Date().toISOString(),
-  vehicle: `${quotes[0].make} ${quotes[0].model}`,
-  quotes: quotes,
-  referenceNumber: referenceNumber,
-  createdBy: user?.name || user?.email || 'Unknown',  // Add this line
-};
+       id: Date.now().toString(),
+       date: new Date().toISOString(),
+       vehicle: `${quotes[0].make} ${quotes[0].model}`,
+        quotes: quotes,
+        referenceNumber: referenceNumber,
+        createdBy: typeof window !== 'undefined' ? (localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Unknown') : 'Unknown',
+        };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
     }
