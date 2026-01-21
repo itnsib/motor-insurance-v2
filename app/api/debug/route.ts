@@ -2,7 +2,7 @@ import { put, list } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 // SHARED history file - all users see the same data
-const HISTORY_FILE = 'nsib-shared-history.json';
+const HISTORY_FILE = 'nsib-history.json';
 
 // Helper function to find blob with pagination
 async function findHistoryBlob() {
@@ -26,7 +26,7 @@ async function findHistoryBlob() {
 export async function GET() {
   try {
     // Try direct URL first (faster)
-    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/${HISTORY_FILE}`;
+    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
     
     try {
       const response = await fetch(directUrl + '?t=' + Date.now());
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       let existingHistory: unknown[] = [];
       
       // Try direct URL first
-      const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/${HISTORY_FILE}`;
+      const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
       try {
         const response = await fetch(directUrl + '?t=' + Date.now());
         if (response.ok) {
@@ -125,7 +125,7 @@ export async function DELETE(request: Request) {
     // Fetch current history
     let history: Array<{ id: string }> = [];
     
-    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/${HISTORY_FILE}`;
+    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
     try {
       const response = await fetch(directUrl + '?t=' + Date.now());
       if (response.ok) {
