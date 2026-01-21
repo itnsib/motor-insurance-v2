@@ -628,13 +628,14 @@ export default function App() {
       // Save to localStorage AND cloud
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       const newComparison: SavedComparison = {
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        vehicle: `${quotes[0].make} ${quotes[0].model}`,
-        quotes: quotes,
-        referenceNumber: referenceNumber,
-        fileUrl: result.url,
-      };
+       id: Date.now().toString(),
+       date: new Date().toISOString(),
+       vehicle: `${quotes[0].make} ${quotes[0].model}`,
+       quotes: quotes,
+       referenceNumber: referenceNumber,
+       fileUrl: result.url,
+       createdBy: user?.name || user?.email || 'Unknown',
+       };
       savedHistory.unshift(newComparison);
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
 
@@ -659,7 +660,6 @@ export default function App() {
   vehicle: `${quotes[0].make} ${quotes[0].model}`,
   quotes: quotes,
   referenceNumber: referenceNumber,
-  fileUrl: result.url,
   createdBy: user?.name || user?.email || 'Unknown',  // Add this line
 };
       savedHistory.unshift(newComparison);
