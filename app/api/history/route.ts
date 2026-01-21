@@ -4,14 +4,14 @@ import { NextResponse } from 'next/server';
 // SHARED history file - all users see the same data
 const HISTORY_FILE = 'nsib-shared-history.json';
 
-// GET - Fetch shared history (all users see the same data)
+// GET - Fetch shared history
 export async function GET() {
   try {
     const { blobs } = await list();
     const historyBlob = blobs.find(blob => blob.pathname === HISTORY_FILE);
     
     if (historyBlob) {
-      const response = await fetch(historyBlob.url);
+      const response = await fetch(historyBlob.url + '?t=' + Date.now());
       const history = await response.json();
       return NextResponse.json({ success: true, history });
     } else {
@@ -26,15 +26,37 @@ export async function GET() {
 // POST - Save to shared history
 export async function POST(request: Request) {
   try {
-    const { history } = await request.json();
+    const body = await request.json();
+    
+    let newHistory;
+    
+    if (body.history) {
+      newHistory = body.history;
+    } else if (body.item) {
+      const { blobs } = await list();
+      const historyBlob = blobs.find(blob => blob.pathname === HISTORY_FILE);
+      
+      let existingHistory = [];
+      if (historyBlob) {
+        const response = await fetch(historyBlob.url + '?t=' + Date.now());
+        existingHistory = await response.json();
+      }
+      
+      newHistory = [body.item, ...existingHistory];
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'Missing history or item' },
+        { status: 400 }
+      );
+    }
 
-    const blob = await put(HISTORY_FILE, JSON.stringify(history), {
+    const blob = await put(HISTORY_FILE, JSON.stringify(newHistory), {
       access: 'public',
       contentType: 'application/json',
       addRandomSuffix: false,
     });
 
-    return NextResponse.json({ success: true, url: blob.url });
+    return NextResponse.json({ success: true, url: blob.url, count: newHistory.length });
   } catch (error) {
     console.error('Error saving history:', error);
     return NextResponse.json(
@@ -57,20 +79,17 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Fetch current history
     const { blobs } = await list();
     const historyBlob = blobs.find(blob => blob.pathname === HISTORY_FILE);
     
     let history: Array<{ id: string }> = [];
     if (historyBlob) {
-      const response = await fetch(historyBlob.url);
+      const response = await fetch(historyBlob.url + '?t=' + Date.now());
       history = await response.json();
     }
 
-    // Remove the item
     const updatedHistory = history.filter(item => item.id !== id);
 
-    // Save updated history
     await put(HISTORY_FILE, JSON.stringify(updatedHistory), {
       access: 'public',
       contentType: 'application/json',
