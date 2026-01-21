@@ -19,6 +19,9 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
+          // Save user to localStorage
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
           if (data.user.role === 'admin') {
             router.push('/admin');
           } else {
@@ -53,6 +56,10 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
+        // ✅ Save user to localStorage for use in dashboard
+        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log('User saved to localStorage:', data.user);
+        
         if (data.user.role === 'admin') {
           router.push('/admin');
         } else {

@@ -1,19 +1,11 @@
 // lib/users.ts
-
 import { User, UserWithPassword, UserRole } from '@/types/auth';
 import { hashPassword } from './auth';
+import { put, list } from '@vercel/blob';
 
-// Pre-computed password hashes (using sha256 with salt 'nsib-salt-2024')
-// admin123 -> hash, hod123 -> hash, etc.
-const PRECOMPUTED_HASHES: Record<string, string> = {
-  'admin123': '7c4a8d09ca3762af61e59520943dc26494f8941b', // Will be computed on first run
-  'hod123': 'placeholder',
-  'advisor123': 'placeholder',
-  'ahmed123': 'placeholder',
-  'sarah123': 'placeholder',
-};
+const USERS_BLOB_KEY = 'nsib-users-data.json';
 
-// Default users - In production, this would be in a database
+// Default users - created on first run
 const createDefaultUsers = (): UserWithPassword[] => [
   {
     id: 'user_admin_001',
@@ -62,31 +54,119 @@ const createDefaultUsers = (): UserWithPassword[] => [
   },
 ];
 
-// In-memory user store (in production, use database)
-const users: UserWithPassword[] = createDefaultUsers();
+// In-memory cache
+let usersCache: UserWithPassword[] | null = null;
+let cacheInitialized = false;
+
+// Load users from Vercel Blob
+async function loadUsersFromBlob(): Promise<UserWithPassword[]> {
+  try {
+    const { blobs } = await list({ prefix: USERS_BLOB_KEY });
+    
+    if (blobs.length > 0) {
+      const response = await fetch(blobs[0].url);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Users loaded from Blob storage:', data.length);
+        return data;
+      }
+    }
+    
+    // No existing users, create defaults and save
+    console.log('No users in Blob, creating defaults...');
+    const defaults = createDefaultUsers();
+    await saveUsersToBlob(defaults);
+    return defaults;
+  } catch (error) {
+    console.error('Error loading users from Blob:', error);
+    // Return defaults on error
+    return createDefaultUsers();
+  }
+}
+
+// Save users to Vercel Blob
+async function saveUsersToBlob(users: UserWithPassword[]): Promise<void> {
+  try {
+    await put(USERS_BLOB_KEY, JSON.stringify(users, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+    console.log('Users saved to Blob storage:', users.length);
+  } catch (error) {
+    console.error('Error saving users to Blob:', error);
+  }
+}
+
+// Initialize users cache
+async function initializeUsers(): Promise<UserWithPassword[]> {
+  if (!cacheInitialized || usersCache === null) {
+    usersCache = await loadUsersFromBlob();
+    cacheInitialized = true;
+  }
+  return usersCache;
+}
+
+// Synchronous fallback for existing code (uses cache or defaults)
+function getUsersSync(): UserWithPassword[] {
+  if (usersCache !== null) {
+    return usersCache;
+  }
+  // Return defaults if cache not initialized (will be updated async)
+  return createDefaultUsers();
+}
 
 // User management functions
-export function getAllUsers(): User[] {
+
+export async function getAllUsersAsync(): Promise<User[]> {
+  const users = await initializeUsers();
   return users.map(({ passwordHash: _, ...user }) => user);
 }
 
-export function getUserById(id: string): User | null {
+export function getAllUsers(): User[] {
+  const users = getUsersSync();
+  return users.map(({ passwordHash: _, ...user }) => user);
+}
+
+export async function getUserByIdAsync(id: string): Promise<User | null> {
+  const users = await initializeUsers();
   const user = users.find(u => u.id === id);
   if (!user) return null;
   const { passwordHash: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
 }
 
-export function getUserByEmail(email: string): UserWithPassword | null {
+export function getUserById(id: string): User | null {
+  const users = getUsersSync();
+  const user = users.find(u => u.id === id);
+  if (!user) return null;
+  const { passwordHash: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+}
+
+export async function getUserByEmailAsync(email: string): Promise<UserWithPassword | null> {
+  const users = await initializeUsers();
   return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
-export function createUser(
+export function getUserByEmail(email: string): UserWithPassword | null {
+  const users = getUsersSync();
+  return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+}
+
+export async function createUserAsync(
   email: string,
   name: string,
   password: string,
   role: UserRole
-): User {
+): Promise<User> {
+  const users = await initializeUsers();
+  
+  // Check if email already exists
+  const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (existing) {
+    throw new Error('User with this email already exists');
+  }
+  
   const newUser: UserWithPassword = {
     id: `user_${Date.now()}`,
     email: email.toLowerCase(),
@@ -98,8 +178,58 @@ export function createUser(
   };
   
   users.push(newUser);
+  usersCache = users;
+  
+  // Save to Blob
+  await saveUsersToBlob(users);
   
   const { passwordHash: _, ...userWithoutPassword } = newUser;
+  return userWithoutPassword;
+}
+
+export function createUser(
+  email: string,
+  name: string,
+  password: string,
+  role: UserRole
+): User {
+  const users = getUsersSync();
+  
+  const newUser: UserWithPassword = {
+    id: `user_${Date.now()}`,
+    email: email.toLowerCase(),
+    name,
+    role,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    passwordHash: hashPassword(password),
+  };
+  
+  users.push(newUser);
+  usersCache = users;
+  
+  // Save async (fire and forget)
+  saveUsersToBlob(users).catch(err => console.error('Failed to save users:', err));
+  
+  const { passwordHash: _, ...userWithoutPassword } = newUser;
+  return userWithoutPassword;
+}
+
+export async function updateUserAsync(
+  id: string,
+  updates: Partial<Pick<User, 'name' | 'role' | 'isActive'>>
+): Promise<User | null> {
+  const users = await initializeUsers();
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) return null;
+  
+  users[index] = { ...users[index], ...updates };
+  usersCache = users;
+  
+  // Save to Blob
+  await saveUsersToBlob(users);
+  
+  const { passwordHash: _, ...userWithoutPassword } = users[index];
   return userWithoutPassword;
 }
 
@@ -107,31 +237,69 @@ export function updateUser(
   id: string,
   updates: Partial<Pick<User, 'name' | 'role' | 'isActive'>>
 ): User | null {
+  const users = getUsersSync();
   const index = users.findIndex(u => u.id === id);
   if (index === -1) return null;
   
   users[index] = { ...users[index], ...updates };
+  usersCache = users;
+  
+  // Save async
+  saveUsersToBlob(users).catch(err => console.error('Failed to save users:', err));
   
   const { passwordHash: _, ...userWithoutPassword } = users[index];
   return userWithoutPassword;
 }
 
-export function updateUserPassword(id: string, newPassword: string): boolean {
+export async function updateUserPasswordAsync(id: string, newPassword: string): Promise<boolean> {
+  const users = await initializeUsers();
   const index = users.findIndex(u => u.id === id);
   if (index === -1) return false;
   
   users[index].passwordHash = hashPassword(newPassword);
+  usersCache = users;
+  
+  // Save to Blob
+  await saveUsersToBlob(users);
   return true;
 }
 
-export function updateLastLogin(id: string): void {
+export function updateUserPassword(id: string, newPassword: string): boolean {
+  const users = getUsersSync();
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) return false;
+  
+  users[index].passwordHash = hashPassword(newPassword);
+  usersCache = users;
+  
+  // Save async
+  saveUsersToBlob(users).catch(err => console.error('Failed to save users:', err));
+  return true;
+}
+
+export async function updateLastLoginAsync(id: string): Promise<void> {
+  const users = await initializeUsers();
   const index = users.findIndex(u => u.id === id);
   if (index !== -1) {
     users[index].lastLogin = new Date().toISOString();
+    usersCache = users;
+    await saveUsersToBlob(users);
   }
 }
 
-export function deleteUser(id: string): boolean {
+export function updateLastLogin(id: string): void {
+  const users = getUsersSync();
+  const index = users.findIndex(u => u.id === id);
+  if (index !== -1) {
+    users[index].lastLogin = new Date().toISOString();
+    usersCache = users;
+    // Save async
+    saveUsersToBlob(users).catch(err => console.error('Failed to save users:', err));
+  }
+}
+
+export async function deleteUserAsync(id: string): Promise<boolean> {
+  const users = await initializeUsers();
   const index = users.findIndex(u => u.id === id);
   if (index === -1) return false;
   
@@ -143,5 +311,36 @@ export function deleteUser(id: string): boolean {
   }
   
   users.splice(index, 1);
+  usersCache = users;
+  
+  // Save to Blob
+  await saveUsersToBlob(users);
   return true;
+}
+
+export function deleteUser(id: string): boolean {
+  const users = getUsersSync();
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) return false;
+  
+  // Don't allow deleting the last admin
+  const user = users[index];
+  if (user.role === 'admin') {
+    const adminCount = users.filter(u => u.role === 'admin' && u.isActive).length;
+    if (adminCount <= 1) return false;
+  }
+  
+  users.splice(index, 1);
+  usersCache = users;
+  
+  // Save async
+  saveUsersToBlob(users).catch(err => console.error('Failed to save users:', err));
+  return true;
+}
+
+// Force reload from Blob (useful for syncing)
+export async function reloadUsers(): Promise<void> {
+  cacheInitialized = false;
+  usersCache = null;
+  await initializeUsers();
 }
