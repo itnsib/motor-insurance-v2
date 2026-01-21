@@ -98,14 +98,15 @@ export async function POST() {
       const referenceNumber = parts[parts.length - 1] || '';
 
       return {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        date: file.uploadedAt.toISOString(),
-        vehicle,
-        customerName,
-        referenceNumber,
-        fileUrl: file.url,
-      };
-    });
+  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  date: file.uploadedAt.toISOString(),
+  vehicle,
+  customerName,
+  referenceNumber,
+  fileUrl: file.url,
+  quotes: [],
+  businessType: 'Private',
+};
 
     const allHistory = [...existingHistory, ...newEntries];
     allHistory.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
