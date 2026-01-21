@@ -5,19 +5,32 @@ const HISTORY_FILE = 'nsib-history.json';
 const BLOB_BASE_URL = 'https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com';
 
 export async function GET() {
+  const url = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json?t=${Date.now()}`;
+  
   try {
-    const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
     const response = await fetch(url);
+    const status = response.status;
     
     if (response.ok) {
       const history = await response.json();
-      return NextResponse.json({ success: true, history });
+      return NextResponse.json({ 
+        success: true, 
+        history,
+        debug: { url, status, count: history.length }
+      });
     } else {
-      return NextResponse.json({ success: true, history: [] });
+      return NextResponse.json({ 
+        success: true, 
+        history: [],
+        debug: { url, status, error: 'Response not ok' }
+      });
     }
   } catch (error) {
-    console.error('Error fetching history:', error);
-    return NextResponse.json({ success: true, history: [] });
+    return NextResponse.json({ 
+      success: true, 
+      history: [],
+      debug: { url, error: String(error) }
+    });
   }
 }
 
