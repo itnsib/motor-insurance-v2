@@ -1,51 +1,24 @@
-import { put, list } from '@vercel/blob';
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 // SHARED history file - all users see the same data
 const HISTORY_FILE = 'nsib-history.json';
-
-// Helper function to find blob with pagination
-async function findHistoryBlob() {
-  let cursor: string | undefined;
-  
-  do {
-    const result = await list({ cursor, limit: 1000 });
-    const historyBlob = result.blobs.find(blob => blob.pathname === HISTORY_FILE);
-    
-    if (historyBlob) {
-      return historyBlob;
-    }
-    
-    cursor = result.cursor;
-  } while (cursor);
-  
-  return null;
-}
+const BLOB_BASE_URL = 'https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com';
 
 // GET - Fetch shared history
 export async function GET() {
   try {
-    // Try direct URL first (faster)
-    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
+    const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
+    console.log('Fetching history from:', url);
     
-    try {
-      const response = await fetch(directUrl + '?t=' + Date.now());
-      if (response.ok) {
-        const history = await response.json();
-        return NextResponse.json({ success: true, history });
-      }
-    } catch {
-      // Direct URL failed, try list method
-    }
+    const response = await fetch(url);
     
-    // Fallback: Search through blobs with pagination
-    const historyBlob = await findHistoryBlob();
-    
-    if (historyBlob) {
-      const response = await fetch(historyBlob.url + '?t=' + Date.now());
+    if (response.ok) {
       const history = await response.json();
+      console.log('History fetched, items:', history.length);
       return NextResponse.json({ success: true, history });
     } else {
+      console.log('Response not ok:', response.status);
       return NextResponse.json({ success: true, history: [] });
     }
   } catch (error) {
@@ -68,20 +41,14 @@ export async function POST(request: Request) {
       // Single item addition - fetch existing and append
       let existingHistory: unknown[] = [];
       
-      // Try direct URL first
-      const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
       try {
-        const response = await fetch(directUrl + '?t=' + Date.now());
+        const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
+        const response = await fetch(url);
         if (response.ok) {
           existingHistory = await response.json();
         }
-      } catch {
-        // Try list method as fallback
-        const historyBlob = await findHistoryBlob();
-        if (historyBlob) {
-          const response = await fetch(historyBlob.url + '?t=' + Date.now());
-          existingHistory = await response.json();
-        }
+      } catch (e) {
+        console.error('Error fetching existing history:', e);
       }
       
       // Add new item at the beginning
@@ -125,18 +92,14 @@ export async function DELETE(request: Request) {
     // Fetch current history
     let history: Array<{ id: string }> = [];
     
-    const directUrl = `https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com/nsib-history.json`;
     try {
-      const response = await fetch(directUrl + '?t=' + Date.now());
+      const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
+      const response = await fetch(url);
       if (response.ok) {
         history = await response.json();
       }
-    } catch {
-      const historyBlob = await findHistoryBlob();
-      if (historyBlob) {
-        const response = await fetch(historyBlob.url + '?t=' + Date.now());
-        history = await response.json();
-      }
+    } catch (e) {
+      console.error('Error fetching history for delete:', e);
     }
 
     // Remove the item
