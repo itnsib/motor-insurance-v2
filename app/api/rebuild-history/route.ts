@@ -19,12 +19,11 @@ export async function GET() {
   try {
     let existingHistory: HistoryItem[] = [];
     try {
-      const response = await fetch(`${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`);
+      const response = await fetch(BLOB_BASE_URL + '/' + HISTORY_FILE + '?t=' + Date.now());
       if (response.ok) existingHistory = await response.json();
     } catch { existingHistory = []; }
 
     const existingUrls = new Set(existingHistory.map(h => h.fileUrl).filter(Boolean));
-
     const allHtmlFiles: Array<{ pathname: string; url: string; uploadedAt: Date }> = [];
     let cursor: string | undefined;
     let totalScanned = 0;
@@ -45,15 +44,15 @@ export async function GET() {
       const customerName = parts[1] || 'Unknown';
       const make = parts[2] || '';
       const model = parts[3] || '';
-      const vehicle = `${make} ${model}`.trim() || 'Unknown Vehicle';
+      const vehicle = (make + ' ' + model).trim() || 'Unknown Vehicle';
       const referenceNumber = parts[parts.length - 1] || '';
 
       return {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         date: file.uploadedAt.toISOString(),
-        vehicle,
-        customerName,
-        referenceNumber,
+        vehicle: vehicle,
+        customerName: customerName,
+        referenceNumber: referenceNumber,
         fileUrl: file.url,
         quotes: [],
         businessType: 'Private',
@@ -62,7 +61,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      stats: { totalScanned, totalHtmlFiles: allHtmlFiles.length, existingCount: existingHistory.length, newFilesFound: newFiles.length },
+      stats: { totalScanned: totalScanned, totalHtmlFiles: allHtmlFiles.length, existingCount: existingHistory.length, newFilesFound: newFiles.length },
       preview: newEntries.slice(0, 5),
     });
   } catch (error) {
@@ -74,12 +73,11 @@ export async function POST() {
   try {
     let existingHistory: HistoryItem[] = [];
     try {
-      const response = await fetch(`${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`);
+      const response = await fetch(BLOB_BASE_URL + '/' + HISTORY_FILE + '?t=' + Date.now());
       if (response.ok) existingHistory = await response.json();
     } catch { existingHistory = []; }
 
     const existingUrls = new Set(existingHistory.map(h => h.fileUrl).filter(Boolean));
-
     const allHtmlFiles: Array<{ pathname: string; url: string; uploadedAt: Date }> = [];
     let cursor: string | undefined;
 
@@ -98,4 +96,38 @@ export async function POST() {
       const customerName = parts[1] || 'Unknown';
       const make = parts[2] || '';
       const model = parts[3] || '';
-      const vehicle = `${make} ${model}`.trim() || 'Unknown Vehi
+      const vehicle = (make + ' ' + model).trim() || 'Unknown Vehicle';
+      const referenceNumber = parts[parts.length - 1] || '';
+
+      return {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        date: file.uploadedAt.toISOString(),
+        vehicle: vehicle,
+        customerName: customerName,
+        referenceNumber: referenceNumber,
+        fileUrl: file.url,
+        quotes: [],
+        businessType: 'Private',
+      };
+    });
+
+    const allHistory = [...existingHistory, ...newEntries];
+    allHistory.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+    await put(HISTORY_FILE, JSON.stringify(allHistory), {
+      access: 'public',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+
+    return NextResponse.json({
+      success: true,
+      previousCount: existingHistory.length,
+      newFilesAdded: newEntries.length,
+      totalCount: allHistory.length,
+    });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  }
+}
