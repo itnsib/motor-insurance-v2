@@ -15,7 +15,7 @@ export async function GET() {
         existingHistory = await response.json();
       }
     } catch (e) {
-      existingHistory = []
+      existingHistory = [];
     }
 
     // Get all existing file URLs from history
