@@ -19,7 +19,6 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
-          // Already logged in, redirect based on role
           if (data.user.role === 'admin') {
             router.push('/admin');
           } else {
@@ -35,7 +34,6 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  // Check if already logged in
   useEffect(() => {
     checkExistingAuth();
   }, [checkExistingAuth]);
@@ -55,7 +53,6 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Redirect based on role
         if (data.user.role === 'admin') {
           router.push('/admin');
         } else {
@@ -83,7 +80,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
             <span className="text-3xl font-bold text-indigo-600">NS</span>
@@ -92,7 +88,6 @@ export default function LoginPage() {
           <p className="text-indigo-200">Quote Comparison System</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
 
@@ -155,8 +150,8 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+        </div>
 
-        {/* Footer */}
         <p className="text-center text-indigo-200 text-sm mt-6">
           © 2024 New Shield Insurance Brokers L.L.C.
         </p>
