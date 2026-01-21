@@ -1411,6 +1411,7 @@ interface SavedHistoryPageProps {
 function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
   const [history, setHistory] = useState<SavedComparison[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadHistory();
@@ -1419,27 +1420,22 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      // Try to load from cloud first
       const response = await fetch('/api/history');
       const result = await response.json();
       
       if (result.success && result.history.length > 0) {
         setHistory(result.history);
-        // Also save to localStorage as backup
         localStorage.setItem('quotesHistory', JSON.stringify(result.history));
       } else {
-        // Fallback to localStorage if cloud is empty
         const localHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
         setHistory(localHistory);
         
-        // If localStorage has data, sync it to cloud
         if (localHistory.length > 0) {
           await saveHistoryToCloud(localHistory);
         }
       }
     } catch (error) {
       console.error('Error loading history:', error);
-      // Fallback to localStorage on error
       const localHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
       setHistory(localHistory);
     } finally {
@@ -1489,6 +1485,31 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     });
   };
 
+  // Filter history based on search term
+  const filteredHistory = history.filter(comparison => {
+    if (!searchTerm.trim()) return true;
+    
+    const search = searchTerm.toLowerCase().trim();
+    
+    // Search by customer name (from quotes or from comparison)
+    const customerName = comparison.quotes?.[0]?.customerName?.toLowerCase() || 
+                         (comparison as unknown as { customerName?: string }).customerName?.toLowerCase() || '';
+    
+    // Search by enquiry number (from quotes or from comparison)
+    const enquiryNumber = comparison.quotes?.[0]?.enquiryNumber?.toLowerCase() || '';
+    
+    // Search by reference number
+    const referenceNumber = comparison.referenceNumber?.toLowerCase() || '';
+    
+    // Search by vehicle
+    const vehicle = comparison.vehicle?.toLowerCase() || '';
+    
+    return customerName.includes(search) || 
+           enquiryNumber.includes(search) || 
+           referenceNumber.includes(search) ||
+           vehicle.includes(search);
+  });
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl p-5 shadow-2xl">
@@ -1513,31 +1534,67 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
           🔄 Refresh
         </button>
       </div>
+
+      {/* Search Box */}
+      <div className="mb-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="🔍 Search by Customer Name, Enquiry Number, or Reference..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-gray-500 mt-1">
+            Found {filteredHistory.length} of {history.length} records
+          </p>
+        )}
+      </div>
       
       {history.length === 0 ? (
         <div className="text-center text-gray-400 italic py-20">
           No saved comparisons yet. Create a comparison and save it to see it here.
         </div>
+      ) : filteredHistory.length === 0 ? (
+        <div className="text-center text-gray-400 italic py-20">
+          No results found for "{searchTerm}"
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {history.map(comparison => (
+          {filteredHistory.map(comparison => (
             <div key={comparison.id} className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border-2 border-gray-200 hover:border-indigo-400 transition shadow-sm hover:shadow-md">
               <div className="mb-3">
                 <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
+                {comparison.quotes?.[0]?.customerName && (
+                  <div className="text-sm text-gray-700">👤 {comparison.quotes[0].customerName}</div>
+                )}
+                {comparison.quotes?.[0]?.enquiryNumber && (
+                  <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
+                )}
                 <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
                 <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
               </div>
               
               <div className="mb-3">
-                <div className="text-sm text-gray-700 mb-2"><strong>Quotes:</strong> {comparison.quotes.length}</div>
+                <div className="text-sm text-gray-700 mb-2"><strong>Quotes:</strong> {comparison.quotes?.length || 0}</div>
                 <div className="text-xs text-gray-600 max-h-24 overflow-y-auto">
-                  {comparison.quotes.map(q => (
+                  {comparison.quotes?.map(q => (
                     <div key={q.id} className="truncate">
-                      • {q.company} - AED {q.total.toFixed(2)}
+                      • {q.company} - AED {q.total?.toFixed(2) || '0.00'}
                       {q.isRenewal && ' 🔄'}
                       {q.isRecommended && ' ⭐'}
                     </div>
-                  ))}
+                  )) || <div className="text-gray-400">No quote details</div>}
                 </div>
               </div>
               
