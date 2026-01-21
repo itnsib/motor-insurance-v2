@@ -1567,7 +1567,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="text-center text-gray-400 italic py-20">
-          No results found for "{searchTerm}"
+          No results found for &quot;{searchTerm}&quot;
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
