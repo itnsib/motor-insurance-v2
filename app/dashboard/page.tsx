@@ -366,7 +366,7 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
 </head>
 <body>
     <div class="page1">
-        <img src="https://i.imgur.com/qgsax5Y.png" alt="About">
+        <img src="https://i.imgur.com/M1MHi9j.png" alt="About">
     </div>
     
     <div class="page2">
