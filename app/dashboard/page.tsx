@@ -1043,6 +1043,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
               <option value="Agency">Agency</option>
               <option value="Non-Agency">Non-Agency</option>
               <option value="Agency/Non-Agency">Agency/Non-Agency</option>
+              <option value="Dyna Trade">Dyna Trade</option>
             </select>
           </div>
 
@@ -1220,6 +1221,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                           <option value="Agency">Agency</option>
                           <option value="Non-Agency">Non-Agency</option>
                           <option value="Agency/Non-Agency">Agency/Non-Agency</option>
+                          <option value="Dyna Trade">Dyna Trade</option>
                         </select>
                       ) : (
                         q.repairType
