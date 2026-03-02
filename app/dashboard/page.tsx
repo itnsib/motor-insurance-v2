@@ -79,7 +79,7 @@ const COMPANY_LOGOS: Record<string, string> = {
 const VEHICLE_MAKES = [
   'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi', 'BAIC Motor', 'Bentley', 'Bestune', 'BMW',
   'Bugatti', 'Buick', 'BYD', 'Cadillac', 'Changan', 'Chery', 'Chevrolet', 'Chrysler',
-  'Citroën', 'Dacia', 'Daewoo', 'Daihatsu', 'Dodge', 'Dongfeng' , 'Ducati', 'Exeed', 'Ferrari',
+  'Citroën', 'CMC', 'Dacia', 'Daewoo', 'Daihatsu', 'Dodge', 'Dongfeng' , 'Ducati', 'Exeed', 'Ferrari',
   'Fiat', 'Ford', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
   'Hino 300', 'Honda', 'Hongqi', 'Hummer', 'Hyundai', 'Infiniti', 'Isuzu', 'JAC Motors',
   'Jaguar', 'Jeep', 'Jetour', 'Kia', 'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
@@ -97,14 +97,14 @@ const YEARS = [
 ];
 
 const PRIVATE_INSURANCE_COMPANIES = [
-  'SUKOON', 'DNI', 'QATAR', 'WATANIA', 'ADAMJEE', 'FIDELITY', 'LIVA', 'EMIRATES', 
-  'RAK', 'SALAMA', 'SUKOON TAKAFUL','INSURANCE HOUSE', 'NEW INDIA DXB', 'METHAQ', 'NGI', 'GIG', 'AL WATHBA', 'ORIENT INSRANCE', 'AL ITTIHAD AL WATANI',
+  'SUKOON', 'DNI', 'QATAR', 'WATANIA', 'ADAMJEE', 'FIDELITY', 'LIVA', 'EMIRATES',
+  'RAK', 'SALAMA','INSURANCE HOUSE', 'NEW INDIA DXB', 'METHAQ', 'NGI', 'GIG', 'AL WATHBA', 'ORIENT INSRANCE', 'AL ITTIHAD AL WATANI',
   'UNION INSURANCE', 'NIA ABU DHABI', 'AL SAGR'
 ];
 
 const COMMERCIAL_INSURANCE_COMPANIES = [
   'SUKOON', 'ADAMJEE', 'METHAQ (ind. pickup)', 'NEW INDIA ABU DHABI',
-  'DNIRC', 'SUKOON TAKAFUL', 'NIA DXB','INSURANCE HOUSE', 'AL SAGR', 'EMIRATES', 'AL ITTIHAD AL WATANI', 'NGI'
+  'DNIRC', 'NIA DXB','INSURANCE HOUSE', 'AL SAGR', 'EMIRATES', 'AL ITTIHAD AL WATANI', 'NGI'
 ];
 
 const COMPANY_PRODUCT_TYPES: Record<string, string[]> = {
