@@ -480,7 +480,8 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
             <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p style="margin-top: 1.5mm;"><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
-            <p>For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
+            <p style="margin-top: 1.5mm;">While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us.</p>
+            <p style="margin-top: 1.5mm;">For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
         </div>
         
         <div class="footer-contact">
