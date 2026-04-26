@@ -363,9 +363,9 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .renewal-badge { background: #ffc107; color: #000 !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
         .recommended-badge { background: #28a745; color: #fff !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
         .advisor-comment-cell { background: #e3f2fd !important; font-size: 8px; text-align: left !important; padding: 2mm !important; line-height: 1.3; color: #000 !important; vertical-align: top !important; }
-        .disclaimer { background: #fff3cd; padding: 2.5mm; margin: 2mm 0; font-size: 8px; line-height: 1.4; border-left: 2mm solid #ffc107; color: #000; }
-        .disclaimer h4 { font-size: 10px; margin-bottom: 1.5mm; color: #856404; }
-        .disclaimer p { margin-bottom: 1mm; }
+        .disclaimer { background: #fff3cd; padding: 2mm 2.5mm; margin: 1.5mm 0; font-size: 7px; line-height: 1.3; border-left: 2mm solid #ffc107; color: #000; }
+        .disclaimer h4 { font-size: 9px; margin-bottom: 1mm; color: #856404; }
+        .disclaimer p { margin-bottom: 0.5mm; }
         .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2.5mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 9px; line-height: 1.3; }
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
@@ -471,17 +471,12 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         
         <div class="disclaimer">
             <h4>Disclaimer / Special Conditions</h4>
-            <p><strong>Vehicle Specification:</strong> Vehicle must comply with GCC specifications.</p>
-            <p><strong>Vehicle Modification:</strong> Any modification to the vehicle is not covered.</p>
-            <p><strong>Spare Parts (Additional Excess):</strong> Applicable as per policy terms.</p>
-            <p><strong>Young Driver Excess (Below 25 years):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Novice Driver Excess (UAE License below 1 year):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Sports Cars (Additional Excess):</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p style="margin-top: 1.5mm;"><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
-            <p style="margin-top: 1.5mm;">While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us.</p>
-            <p style="margin-top: 1.5mm;">For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
+            <p><strong>Vehicle Specification:</strong> Vehicle must comply with GCC specifications. <strong>Vehicle Modification:</strong> Any modification to the vehicle is not covered. <strong>Spare Parts (Additional Excess):</strong> Applicable as per policy terms.</p>
+            <p><strong>Young Driver Excess (Below 25 years):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule. <strong>Novice Driver Excess (UAE License below 1 year):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Sports Cars (Additional Excess):</strong> 15% of claim amount plus standard policy excess as per Policy Schedule. <strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess as per Policy Schedule. <strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
+            <p>While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us.</p>
+            <p>For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
         </div>
         
         <div class="footer-contact">
