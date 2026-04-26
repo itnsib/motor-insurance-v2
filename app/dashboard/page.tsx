@@ -366,6 +366,8 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .disclaimer { background: #fff3cd; padding: 1.5mm 2mm; margin: 1mm 0; font-size: 7px; line-height: 1.25; border-left: 2mm solid #ffc107; color: #000; page-break-inside: avoid; }
         .disclaimer h4 { font-size: 8px; margin-bottom: 0.5mm; color: #856404; }
         .disclaimer p { margin-bottom: 0.3mm; }
+        .disclaimer-bottom { background: #fff3cd; padding: 1.5mm 2mm; font-size: 7px; line-height: 1.25; border-left: 2mm solid #ffc107; color: #000; position: absolute; bottom: 18mm; left: 10mm; right: 10mm; }
+        .disclaimer-bottom p { margin: 0; }
         .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 8px; line-height: 1.2; }
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
@@ -478,6 +480,9 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
             <p><strong>Sports Cars (Additional Excess):</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess. <strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
+        </div>
+        
+        <div class="disclaimer-bottom">
             <p>While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us. For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
         </div>
         
