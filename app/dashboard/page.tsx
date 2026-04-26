@@ -20,6 +20,8 @@ interface Quote {
   omanCover: string;
   windscreenExcess: string;
   excess: number;
+  ancillary: string;
+  ancillaryDetails: string;
   premium: number;
   vat: number;
   total: number;
@@ -252,11 +254,11 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
       coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'GIG': {
-  repairType: productType === 'MOTOR PERFECT' ? 'Non-Agency' : 'Agency',
-  thirdPartyLiability: productType === 'MOTOR PRESTIGE' ? 'UPTO AED 5 Million' : 'UPTO AED 3.5 Million',
-  omanCover: 'Yes',
-  windscreenExcess: 'UPTO AED 5000',
-  coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Hire car Benefit']
+      repairType: productType === 'MOTOR PERFECT' ? 'Non-Agency' : 'Agency',
+      thirdPartyLiability: productType === 'MOTOR PRESTIGE' ? 'UPTO AED 5 Million' : 'UPTO AED 3.5 Million',
+      omanCover: 'Yes',
+      windscreenExcess: 'UPTO AED 5000',
+      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Hire car Benefit']
     },
     'AL WATHBA': {
       repairType: '',
@@ -361,8 +363,9 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .renewal-badge { background: #ffc107; color: #000 !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
         .recommended-badge { background: #28a745; color: #fff !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
         .advisor-comment-cell { background: #e3f2fd !important; font-size: 8px; text-align: left !important; padding: 2mm !important; line-height: 1.3; color: #000 !important; vertical-align: top !important; }
-        .disclaimer { background: #fff3cd; padding: 2.5mm; margin: 2mm 0; font-size: 9px; line-height: 1.3; border-left: 2mm solid #ffc107; color: #000; }
-        .disclaimer h4 { font-size: 11px; margin-bottom: 1.5mm; color: #856404; }
+        .disclaimer { background: #fff3cd; padding: 2.5mm; margin: 2mm 0; font-size: 8px; line-height: 1.4; border-left: 2mm solid #ffc107; color: #000; }
+        .disclaimer h4 { font-size: 10px; margin-bottom: 1.5mm; color: #856404; }
+        .disclaimer p { margin-bottom: 1mm; }
         .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2.5mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 9px; line-height: 1.3; }
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
@@ -438,9 +441,15 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
                     </tr>
                 `).join('')}
                 <tr class="light-blue-row">
-                    <td>Excess</td>
+                    <td>Excess / Deductible</td>
                     ${sortedQuotes.map(q => `<td>AED ${q.excess.toLocaleString()}</td>`).join('')}
                 </tr>
+                ${sortedQuotes.some(q => q.ancillary === 'Applicable') ? `
+                <tr class="light-blue-row">
+                    <td>Ancillary</td>
+                    ${sortedQuotes.map(q => `<td>${q.ancillary === 'Applicable' ? q.ancillaryDetails : 'Not Applicable'}</td>`).join('')}
+                </tr>
+                ` : ''}
                 <tr class="light-blue-row">
                     <td>Premium</td>
                     ${sortedQuotes.map(q => `<td>AED ${q.premium.toFixed(2)}</td>`).join('')}
@@ -461,9 +470,17 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         </table>
         
         <div class="disclaimer">
-            <h4>Disclaimer</h4>
-            <p>While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us.</p>
-            <p style="margin-top: 1.5mm;">For the complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the quote.</p>
+            <h4>Disclaimer / Special Conditions</h4>
+            <p><strong>Vehicle Specification:</strong> Vehicle must comply with GCC specifications.</p>
+            <p><strong>Vehicle Modification:</strong> Any modification to the vehicle is not covered.</p>
+            <p><strong>Spare Parts (Additional Excess):</strong> Applicable as per policy terms.</p>
+            <p><strong>Young Driver Excess (Below 25 years):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Novice Driver Excess (UAE License below 1 year):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Sports Cars (Additional Excess):</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p style="margin-top: 1.5mm;"><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
+            <p>For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
         </div>
         
         <div class="footer-contact">
@@ -511,6 +528,8 @@ export default function App() {
     productType: '',
     thirdPartyLiability: 'NA',
     excess: 0,
+    ancillary: '',
+    ancillaryDetails: '',
     premium: 0,
     isRecommended: false,
     isRenewal: false,
@@ -595,6 +614,8 @@ export default function App() {
       omanCover: omanCover,
       windscreenExcess: windscreenExcess,
       excess: formData.excess,
+      ancillary: formData.ancillary,
+      ancillaryDetails: formData.ancillaryDetails,
       premium: formData.premium,
       vat,
       total,
@@ -616,6 +637,8 @@ export default function App() {
       repairType: '',
       thirdPartyLiability: 'NA',
       excess: 0,
+      ancillary: '',
+      ancillaryDetails: '',
       premium: 0,
       isRecommended: false,
       isRenewal: false,
@@ -744,6 +767,8 @@ export default function App() {
       productType: '',
       thirdPartyLiability: 'NA',
       excess: 0,
+      ancillary: '',
+      ancillaryDetails: '',
       premium: 0,
       isRecommended: false,
       isRenewal: false,
@@ -766,6 +791,8 @@ export default function App() {
       productType: '',
       thirdPartyLiability: 'NA',
       excess: 0,
+      ancillary: '',
+      ancillaryDetails: '',
       premium: 0,
       isRecommended: false,
       isRenewal: false,
@@ -856,6 +883,8 @@ interface QuoteGeneratorPageProps {
     productType: string;
     thirdPartyLiability: string;
     excess: number;
+    ancillary: string;
+    ancillaryDetails: string;
     premium: number;
     isRecommended: boolean;
     isRenewal: boolean;
@@ -1088,24 +1117,50 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Excess</label>
+              <label className="block text-xs font-bold mb-1 text-gray-800">Excess / Deductible</label>
               <input type="number" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="1000" value={formData.excess || ''} onChange={(e) => setFormData({ ...formData, excess: parseFloat(e.target.value) || 0 })} />
             </div>
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-800">Ancillary</label>
+              <select 
+                className="w-full p-2 border rounded text-sm text-gray-900 bg-white" 
+                value={formData.ancillary} 
+                onChange={(e) => setFormData({ ...formData, ancillary: e.target.value, ancillaryDetails: e.target.value === 'Not Applicable' ? '' : formData.ancillaryDetails })}
+              >
+                <option value="">Select</option>
+                <option value="Applicable">Applicable</option>
+                <option value="Not Applicable">Not Applicable</option>
+              </select>
+            </div>
+          </div>
+
+          {formData.ancillary === 'Applicable' && (
+            <div className="mb-3">
+              <label className="block text-xs font-bold mb-1 text-gray-800">Ancillary Details</label>
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded text-sm text-gray-900 bg-white" 
+                placeholder="Enter ancillary details..." 
+                value={formData.ancillaryDetails} 
+                onChange={(e) => setFormData({ ...formData, ancillaryDetails: e.target.value })} 
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-xs font-bold mb-1 text-gray-800">Premium *</label>
               <input type="number" step="0.01" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="2500.00" value={formData.premium || ''} onChange={(e) => handlePremiumChange(parseFloat(e.target.value) || 0)} />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-xs font-bold mb-1 text-gray-800">VAT (5%)</label>
               <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100 text-gray-900 font-semibold" value={vat.toFixed(2)} readOnly />
             </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Total Amount</label>
-              <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100 font-bold text-indigo-600" value={total.toFixed(2)} readOnly />
-            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-xs font-bold mb-1 text-gray-800">Total Amount</label>
+            <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100 font-bold text-indigo-600" value={total.toFixed(2)} readOnly />
           </div>
 
           <div className="flex gap-3 mb-3">
@@ -1347,7 +1402,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Excess */}
                 <tr className="bg-blue-50">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Excess</td>
+                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Excess / Deductible</td>
                   {sortedQuotes.map(q => (
                     <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
                       {editingQuoteId === q.id ? (
@@ -1359,6 +1414,39 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                         />
                       ) : (
                         `AED ${q.excess.toLocaleString()}`
+                      )}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Ancillary */}
+                <tr className="bg-blue-50">
+                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Ancillary</td>
+                  {sortedQuotes.map(q => (
+                    <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
+                      {editingQuoteId === q.id ? (
+                        <div>
+                          <select 
+                            value={q.ancillary || ''}
+                            onChange={(e) => updateQuoteField(q.id, 'ancillary', e.target.value)}
+                            className="w-full p-1 border rounded text-xs text-gray-900 mb-1"
+                          >
+                            <option value="">Select</option>
+                            <option value="Applicable">Applicable</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                          </select>
+                          {q.ancillary === 'Applicable' && (
+                            <input 
+                              type="text"
+                              value={q.ancillaryDetails || ''}
+                              onChange={(e) => updateQuoteField(q.id, 'ancillaryDetails', e.target.value)}
+                              className="w-full p-1 border rounded text-xs text-gray-900"
+                              placeholder="Details..."
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        q.ancillary === 'Applicable' ? q.ancillaryDetails : (q.ancillary || '-')
                       )}
                     </td>
                   ))}
