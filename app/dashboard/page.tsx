@@ -341,17 +341,17 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         body { font-family: Arial; font-size: 12px; color: #000; }
         .page1 { width: 210mm; height: 297mm; page-break-after: always; }
         .page1 img { width: 100%; height: 100%; object-fit: contain; }
-        .page2 { width: 210mm; min-height: 297mm; padding: 8mm 10mm 25mm 10mm; position: relative; }
-        .header-simple { text-align: center; margin-bottom: 5mm; position: relative; height: 12mm; }
+        .page2 { width: 210mm; height: 297mm; padding: 8mm 10mm 22mm 10mm; position: relative; overflow: hidden; }
+        .header-simple { text-align: center; margin-bottom: 4mm; position: relative; height: 12mm; }
         .header-logo { height: 12mm; }
         .header-corner { position: absolute; right: 0; top: 0; height: 15mm; }
         .reference-number { position: absolute; top: 2mm; left: 10mm; font-size: 9px; color: #666; }
-        .section-title { font-size: 18px; font-weight: bold; text-align: center; margin: 3mm 0; color: #000; }
-        .vehicle-info { background: #f8f9fa; padding: 2mm; text-align: center; margin: 2mm 0; font-size: 12px; color: #000; }
-        .comparison-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 2mm 0; table-layout: fixed; }
-        .comparison-table th, .comparison-table td { border: 1px solid #000; padding: 2mm 1.5mm; text-align: center; vertical-align: middle; word-wrap: break-word; }
-        .comparison-table th { background: #1e40af; color: #fff !important; font-size: 12px; padding: 2.5mm 1.5mm; font-weight: bold; }
-        .comparison-table th:first-child, .comparison-table td:first-child { text-align: left; width: 40mm; }
+        .section-title { font-size: 16px; font-weight: bold; text-align: center; margin: 2mm 0; color: #000; }
+        .vehicle-info { background: #f8f9fa; padding: 1.5mm; text-align: center; margin: 1.5mm 0; font-size: 11px; color: #000; }
+        .comparison-table { width: 100%; border-collapse: collapse; font-size: 10px; margin: 1.5mm 0; table-layout: fixed; }
+        .comparison-table th, .comparison-table td { border: 1px solid #000; padding: 1.5mm 1mm; text-align: center; vertical-align: middle; word-wrap: break-word; }
+        .comparison-table th { background: #1e40af; color: #fff !important; font-size: 10px; padding: 2mm 1mm; font-weight: bold; }
+        .comparison-table th:first-child, .comparison-table td:first-child { text-align: left; width: 38mm; }
         .comparison-table td { background: #fff; color: #000 !important; }
         .comparison-table td:first-child { font-weight: bold; background: #f8f9fa; color: #000 !important; }
         .light-blue-row { background: #e3f2fd !important; }
@@ -360,19 +360,19 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .not-included { color: #dc3545 !important; font-weight: bold; }
         .total-row { background: #e3f2fd !important; font-weight: bold; }
         .total-row td { color: #000 !important; }
-        .renewal-badge { background: #ffc107; color: #000 !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
-        .recommended-badge { background: #28a745; color: #fff !important; padding: 1mm 2.5mm; border-radius: 10mm; font-size: 9px; font-weight: bold; display: inline-block; margin-top: 1mm; }
-        .advisor-comment-cell { background: #e3f2fd !important; font-size: 8px; text-align: left !important; padding: 2mm !important; line-height: 1.3; color: #000 !important; vertical-align: top !important; }
-        .disclaimer { background: #fff3cd; padding: 2mm 2.5mm; margin: 1.5mm 0; font-size: 7px; line-height: 1.3; border-left: 2mm solid #ffc107; color: #000; }
-        .disclaimer h4 { font-size: 9px; margin-bottom: 1mm; color: #856404; }
-        .disclaimer p { margin-bottom: 0.5mm; }
-        .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2.5mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 9px; line-height: 1.3; }
+        .renewal-badge { background: #ffc107; color: #000 !important; padding: 0.5mm 2mm; border-radius: 10mm; font-size: 8px; font-weight: bold; display: inline-block; margin-top: 0.5mm; }
+        .recommended-badge { background: #28a745; color: #fff !important; padding: 0.5mm 2mm; border-radius: 10mm; font-size: 8px; font-weight: bold; display: inline-block; margin-top: 0.5mm; }
+        .advisor-comment-cell { background: #e3f2fd !important; font-size: 7px; text-align: left !important; padding: 1.5mm !important; line-height: 1.2; color: #000 !important; vertical-align: top !important; }
+        .disclaimer { background: #fff3cd; padding: 1.5mm 2mm; margin: 1mm 0; font-size: 7px; line-height: 1.25; border-left: 2mm solid #ffc107; color: #000; page-break-inside: avoid; }
+        .disclaimer h4 { font-size: 8px; margin-bottom: 0.5mm; color: #856404; }
+        .disclaimer p { margin-bottom: 0.3mm; }
+        .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 8px; line-height: 1.2; }
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
-        .footer-contact strong { display: block; margin-bottom: 0.5mm; color: #fff !important; font-size: 9.5px; }
-        .company-logo { height: 10mm; max-width: 25mm; object-fit: contain; margin-bottom: 1mm; background: #fff; padding: 1mm; border-radius: 2mm; }
+        .footer-contact strong { display: block; margin-bottom: 0.3mm; color: #fff !important; font-size: 8.5px; }
+        .company-logo { height: 8mm; max-width: 22mm; object-fit: contain; margin-bottom: 0.5mm; background: #fff; padding: 0.5mm; border-radius: 1mm; }
         .company-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .page2 { height: 297mm; overflow: hidden; } }
     </style>
 </head>
 <body>
