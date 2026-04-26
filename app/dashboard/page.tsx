@@ -471,14 +471,12 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         
         <div class="disclaimer">
             <h4>Disclaimer / Special Conditions</h4>
-            <p><strong>Vehicle Specification:</strong> Vehicle must comply with GCC specifications.</p>
-            <p><strong>Vehicle Modification:</strong> Any modification to the vehicle is not covered.</p>
+            <p><strong>Vehicle Specification:</strong> Vehicle must comply with GCC specifications. <strong>Vehicle Modification:</strong> Any modification to the vehicle is not covered.</p>
             <p><strong>Spare Parts (Additional Excess):</strong> Applicable as per policy terms.</p>
             <p><strong>Young Driver Excess (Below 25 years):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Novice Driver Excess (UAE License below 1 year):</strong> 10% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Sports Cars (Additional Excess):</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess as per Policy Schedule.</p>
-            <p><strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
+            <p><strong>Factory Modified Vehicles:</strong> 15% of claim amount plus standard policy excess. <strong>Non-Factory Modified Vehicles:</strong> 20% of claim amount plus standard policy excess as per Policy Schedule.</p>
             <p><strong>Note:</strong> Quote valid for 10 days from issue date. Rates subject to change as per insurer tariff. I declare that all information provided is true and complete.</p>
             <p>While we make every effort to ensure the accuracy and timeliness of the details provided in the comparison table, there may be instances where the actual coverage differs. In such cases, the terms outlined in the insurer&apos;s official policy wording and schedule will take precedence over the information provided by us. For complete <strong>Material Information Declaration</strong> and <strong>Disclaimer</strong>, please refer to the official quote document.</p>
         </div>
