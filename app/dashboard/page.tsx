@@ -140,8 +140,8 @@ const WINDSCREEN_EXCESS_OPTIONS = [
 
 const COVERAGE_OPTIONS = [
   { id: 'fireTheft', label: 'Fire and theft cover' },
-  { id: 'naturalCalamities', label: 'Natural Calamities Riot and strike' },
-  { id: 'floodDamage', label: 'Flood Damage' },
+  { id: 'floodStormNatural', label: 'Flood, Storm and Natural Calamity damages' },
+  { id: 'warRiotStrike', label: 'War, Riot or Strike damages' },
   { id: 'emergencyMedical', label: 'Emergency medical expenses' },
   { id: 'personalBelongings', label: 'Personal belongings' },
   { id: 'offroadCover', label: 'Off-road cover (For 4x4 only)' },
@@ -168,133 +168,133 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
       thirdPartyLiability: productType === 'Gold' ? 'UPTO AED 3.5 Million' : 'UPTO AED 5 Million',
       omanCover: 'Yes(Orange Card available on request)',
       windscreenExcess: productType === 'Gold' ? 'UPTO AED 3000' : 'UNLIMITED',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'DNI': {
       repairType: '',
       thirdPartyLiability: productType === 'Standard' ? 'UPTO AED 3.5 Million' : 'UPTO AED 3.5 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: productType === 'Standard' ? 'UPTO AED 3500' : 'UPTO AED 5000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'QATAR': {
       repairType: '',
       thirdPartyLiability: productType === 'Basic' ? 'UPTO AED 3.5 Million' : 'UPTO AED 3 Million',
       omanCover: 'Yes(Orange Card available on request)',
       windscreenExcess: 'UPTO AED 5000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'WATANIA': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 3 Million',
       omanCover: 'No',
       windscreenExcess: 'UPTO AED 3000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'ADAMJEE': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'No',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'FIDELITY': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'LIVA': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
       omanCover: 'Yes(Orange Card available on request)',
       windscreenExcess: 'UPTO AED 3000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'EMIRATES': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 2500',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'RAK': {
       repairType: 'Non-Agency',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
       omanCover: 'Yes(Orange Card available on request)',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'SALAMA': {
       repairType: 'Non-Agency',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 2500',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'NEW INDIA DXB': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 3000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'METHAQ': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'NGI': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'GIG': {
       repairType: productType === 'MOTOR PERFECT' ? 'Non-Agency' : 'Agency',
       thirdPartyLiability: productType === 'MOTOR PRESTIGE' ? 'UPTO AED 5 Million' : 'UPTO AED 3.5 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 5000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Rent a Car']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Rent a Car']
     },
     'AL WATHBA': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 1500',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'ORIENT INSRANCE': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 3000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'UNION INSURANCE': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 3.5 Million',
       omanCover: 'YES(OWN DAMAGE ONLY)',
       windscreenExcess: 'UPTO AED 1000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'NIA ABU DHABI': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 5000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', 'Personal belongings', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     },
     'AL SAGR': {
       repairType: '',
       thirdPartyLiability: 'UPTO AED 2 Million',
       omanCover: 'No',
       windscreenExcess: 'UPTO AED 2000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
+      coverageOptions: ['Fire and theft cover', 'Flood, Storm and Natural Calamity damages', 'War, Riot or Strike damages', 'Emergency medical expenses', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover']
     }
   };
 
