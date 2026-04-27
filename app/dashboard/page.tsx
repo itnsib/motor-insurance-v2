@@ -141,7 +141,7 @@ const WINDSCREEN_EXCESS_OPTIONS = [
 const COVERAGE_OPTIONS = [
   { id: 'fireTheft', label: 'Fire and theft cover' },
   { id: 'naturalCalamities', label: 'Natural Calamities Riot and strike' },
-  { id: 'flood', label: 'Flood' },
+  { id: 'floodDamage', label: 'Flood Damage' },
   { id: 'emergencyMedical', label: 'Emergency medical expenses' },
   { id: 'personalBelongings', label: 'Personal belongings' },
   { id: 'offroadCover', label: 'Off-road cover (For 4x4 only)' },
@@ -149,7 +149,6 @@ const COVERAGE_OPTIONS = [
   { id: 'ambulanceCover', label: 'Ambulance Cover' },
   { id: 'driverCover', label: 'Optional Covers Driver Cover' },
   { id: 'passengersCover', label: 'Passengers Cover' },
-  { id: 'hirecarBenefit', label: 'Hire car Benefit' },
   { id: 'rentACar', label: 'Rent a Car' }
 ];
 
@@ -260,7 +259,7 @@ const getCompanyDefaults = (company: string, productType?: string): CompanyDefau
       thirdPartyLiability: productType === 'MOTOR PRESTIGE' ? 'UPTO AED 5 Million' : 'UPTO AED 3.5 Million',
       omanCover: 'Yes',
       windscreenExcess: 'UPTO AED 5000',
-      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Hire car Benefit']
+      coverageOptions: ['Fire and theft cover', 'Natural Calamities Riot and strike', 'Emergency medical expenses', 'Personal belongings', 'Off-road cover (For 4x4 only)', '24 Hour Accident and Breakdown Recovery', 'Ambulance Cover', 'Optional Covers Driver Cover', 'Passengers Cover', 'Rent a Car']
     },
     'AL WATHBA': {
       repairType: '',
