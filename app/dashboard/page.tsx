@@ -88,7 +88,7 @@ const VEHICLE_MAKES = [
   'Lotus', 'Maserati', 'Mazda', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
   'Nio', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'RAM', 'Renault', 'Rolls-Royce',
   'Saab', 'Seat', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki', 'Tesla', 'Tata',
-  'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'Ashok Leyland (BUS)'
+  'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'Ashok Leyland (BUS)', 'Ashok Leyland (Pickup)'
 ];
 
 const YEARS = [
