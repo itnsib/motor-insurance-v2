@@ -84,11 +84,11 @@ const VEHICLE_MAKES = [
   'Citroën', 'CMC', 'Dacia', 'Daewoo', 'Daihatsu', 'Dodge', 'Dongfeng' , 'Ducati', 'Exeed', 'Ferrari',
   'Fiat', 'Ford', 'Foton', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
   'Hino 300', 'Honda', 'Hongqi', 'Hummer', 'Hyundai', 'Infiniti', 'Isuzu', 'JAC Motors',
-  'Jaguar', 'Jeep', 'Jetour', 'Kia', 'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
+  'Jaguar', 'Jeep', 'Jetour', 'Kia',  'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
   'Lotus', 'Maserati', 'Mazda', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
   'Nio', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'RAM', 'Renault', 'Rolls-Royce',
   'Saab', 'Seat', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki', 'Tesla', 'Tata',
-  'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'Ashok Leyland (BUS)', 'Ashok Leyland (Pickup)'
+  'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'King Long(Bus)', 'Ashok Leyland (BUS)', 'Ashok Leyland (Pickup)'
 ];
 
 const YEARS = [
