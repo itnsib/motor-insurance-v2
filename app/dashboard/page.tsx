@@ -81,7 +81,7 @@ const COMPANY_LOGOS: Record<string, string> = {
 const VEHICLE_MAKES = [
   'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi', 'BAIC Motor', 'Bentley', 'Bestune', 'BMW',
   'Bugatti', 'Buick', 'BYD', 'Cadillac', 'Changan', 'Chery', 'Chevrolet', 'Chrysler',
-  'Citroën', 'CMC', 'Dacia', 'Daewoo', 'Daihatsu', 'Dodge', 'Dongfeng' , 'Ducati', 'Exeed', 'Ferrari',
+  'Citroën', 'CMC', 'Dacia', 'Daewoo', 'Daihatsu', 'Dodge', 'Dongfeng' , 'DFSK' , 'Ducati', 'Exeed', 'Ferrari',
   'Fiat', 'Ford', 'Foton', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
   'Hino 300', 'Honda', 'Hongqi', 'Hummer', 'Hyundai', 'Infiniti', 'Isuzu', 'JAC Motors',
   'Jaguar', 'Jeep', 'Jetour', 'Kia',  'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
