@@ -1,72 +1,103 @@
-import { put } from '@vercel/blob';
-import { NextResponse } from 'next/server';
+import { put, list, del } from '@vercel/blob';
+import { NextRequest, NextResponse } from 'next/server';
 
-const HISTORY_FILE = 'nsib-history.json';
-const BLOB_BASE_URL = 'https://gwnpkxzk3ye0v7zh.public.blob.vercel-storage.com';
+const HISTORY_FILE = 'quotes-history-shared.json';
 
-export async function GET() {
-  const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
+// Helper to get the current history
+async function getHistory(): Promise<any[]> {
   try {
-    const response = await fetch(url);
-    if (response.ok) {
-      const history = await response.json();
-      return NextResponse.json({ success: true, history });
-    }
-    return NextResponse.json({ success: true, history: [] });
+    const { blobs } = await list({ prefix: HISTORY_FILE });
+    if (blobs.length === 0) return [];
+    
+    const response = await fetch(blobs[0].url);
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    return NextResponse.json({ success: true, history: [] });
+    console.error('Error fetching history:', error);
+    return [];
   }
 }
 
-export async function POST(request: Request) {
+// Helper to save history
+async function saveHistory(history: any[]): Promise<string> {
+  const blob = await put(HISTORY_FILE, JSON.stringify(history), {
+    access: 'public',
+    addRandomSuffix: false,
+  });
+  return blob.url;
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    let newHistory;
-    if (body.history) {
-      newHistory = body.history;
-    } else if (body.item) {
-      let existingHistory: unknown[] = [];
-      try {
-        const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
-        const response = await fetch(url);
-        if (response.ok) existingHistory = await response.json();
-      } catch (e) { existingHistory = []; }
-      newHistory = [body.item, ...existingHistory];
+    const history = await getHistory();
+    return NextResponse.json({ success: true, history });
+  } catch (error) {
+    console.error('GET error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to fetch history' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { item } = await request.json();
+    
+    if (!item || !item.referenceNumber) {
+      return NextResponse.json({ success: false, error: 'Invalid item - missing referenceNumber' }, { status: 400 });
+    }
+    
+    let history = await getHistory();
+    
+    // CRITICAL FIX: Find existing entry by REFERENCE NUMBER (most reliable identifier)
+    const existingIndex = history.findIndex(
+      (h: any) => h.referenceNumber === item.referenceNumber
+    );
+    
+    if (existingIndex !== -1) {
+      // UPDATE existing entry - preserve fileUrl if new item doesn't have one
+      if (!item.fileUrl && history[existingIndex].fileUrl) {
+        item.fileUrl = history[existingIndex].fileUrl;
+      }
+      history[existingIndex] = item;
+      console.log(`Updated existing entry at index ${existingIndex} for ref: ${item.referenceNumber}`);
     } else {
-      return NextResponse.json({ success: false, error: 'Missing data' }, { status: 400 });
+      // ADD new entry at beginning
+      history.unshift(item);
+      console.log(`Added new entry for ref: ${item.referenceNumber}`);
     }
-    await put(HISTORY_FILE, JSON.stringify(newHistory), {
-      access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
-    return NextResponse.json({ success: true, count: newHistory.length });
+    
+    await saveHistory(history);
+    
+    return NextResponse.json({ success: true, updated: existingIndex !== -1 });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    console.error('POST error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to save' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
-    let history: Array<{ id: string }> = [];
-    try {
-      const url = `${BLOB_BASE_URL}/${HISTORY_FILE}?t=${Date.now()}`;
-      const response = await fetch(url);
-      if (response.ok) history = await response.json();
-    } catch (e) { history = []; }
-    const updatedHistory = history.filter(item => item.id !== id);
-    await put(HISTORY_FILE, JSON.stringify(updatedHistory), {
-      access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
+    const refNum = searchParams.get('ref');
+    
+    if (!id && !refNum) {
+      return NextResponse.json({ success: false, error: 'Missing id or ref parameter' }, { status: 400 });
+    }
+    
+    let history = await getHistory();
+    
+    // Delete by ID or reference number
+    if (refNum) {
+      history = history.filter((h: any) => h.referenceNumber !== refNum);
+    } else {
+      history = history.filter((h: any) => h.id !== id);
+    }
+    
+    await saveHistory(history);
+    
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    console.error('DELETE error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete' }, { status: 500 });
   }
 }
