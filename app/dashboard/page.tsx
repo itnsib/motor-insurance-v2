@@ -524,6 +524,9 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<'generator' | 'history'>('generator');
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [businessType, setBusinessType] = useState<'Private' | 'Commercial'>('Private');
+  // NEW: Track current comparison ID and reference number for edit/update
+  const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(null);
+  const [currentReferenceNumber, setCurrentReferenceNumber] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     enquiryNumber: '',
     customerName: '',
@@ -594,6 +597,51 @@ export default function App() {
     );
   };
 
+  // NEW: Auto-save function to save quotes automatically
+  const autoSaveQuotes = async (updatedQuotes: Quote[]) => {
+    if (updatedQuotes.length === 0) return;
+    
+    try {
+      const refNum = currentReferenceNumber || generateReferenceNumber();
+      const compId = currentComparisonId || Date.now().toString();
+      
+      if (!currentReferenceNumber) {
+        setCurrentReferenceNumber(refNum);
+        setCurrentComparisonId(compId);
+      }
+      
+      const comparisonData: SavedComparison = {
+        id: compId,
+        date: new Date().toISOString(),
+        vehicle: updatedQuotes[0].make + ' ' + updatedQuotes[0].model,
+        quotes: updatedQuotes,
+        referenceNumber: refNum,
+        createdBy: getCurrentUserName(),
+      };
+      
+      // Save to localStorage
+      const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === compId || h.referenceNumber === refNum);
+      
+      if (existingIndex !== -1) {
+        savedHistory[existingIndex] = comparisonData;
+      } else {
+        savedHistory.unshift(comparisonData);
+      }
+      localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
+      
+      // Save to cloud in background
+      fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item: comparisonData }),
+      }).catch(err => console.error('Auto-save to cloud failed:', err));
+      
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
+  };
+
   const addQuote = () => {
     if (!formData.enquiryNumber || !formData.customerName || !formData.vehicleMake || !formData.vehicleModel || !formData.insuranceCompany || !formData.premium) {
       alert('Please fill required fields: Enquiry Number, Name, Make, Model, Company, and Premium');
@@ -632,8 +680,13 @@ export default function App() {
       advisorComment: advisorComment,
     };
 
-    setQuotes([...quotes, newQuote]);
+    const updatedQuotes = [...quotes, newQuote];
+    setQuotes(updatedQuotes);
     clearForm();
+    
+    // Auto-save after adding quote
+    autoSaveQuotes(updatedQuotes);
+    
     alert('Quote added to comparison!');
   };
 
@@ -660,12 +713,18 @@ export default function App() {
   };
 
   const removeQuote = (id: string) => {
-    setQuotes(quotes.filter(q => q.id !== id));
+    const updatedQuotes = quotes.filter(q => q.id !== id);
+    setQuotes(updatedQuotes);
     if (editingQuoteId === id) setEditingQuoteId(null);
+    
+    // Auto-save after removing quote (if quotes remain)
+    if (updatedQuotes.length > 0) {
+      autoSaveQuotes(updatedQuotes);
+    }
   };
 
   const updateQuoteField = (id: string, field: keyof Quote, value: string | number | boolean | string[]) => {
-    setQuotes(quotes.map(q => {
+    const updatedQuotes = quotes.map(q => {
       if (q.id === id) {
         const updated = { ...q, [field]: value };
         if (field === 'premium') {
@@ -676,7 +735,11 @@ export default function App() {
         return updated;
       }
       return q;
-    }));
+    });
+    setQuotes(updatedQuotes);
+    
+    // Auto-save after updating quote field
+    autoSaveQuotes(updatedQuotes);
   };
 
   const saveAndDownload = async () => {
@@ -685,9 +748,12 @@ export default function App() {
       return;
     }
 
-    const referenceNumber = generateReferenceNumber();
+    // UPDATED: Use existing reference number if editing, otherwise generate new
+    const referenceNumber = currentReferenceNumber || generateReferenceNumber();
+    const comparisonId = currentComparisonId || Date.now().toString();
+    
     const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
-    const allCoverageOptions = [...new Set(quotes.flatMap(q => q.coverageOptions))];
+    const allCoverageOptions: string[] = Array.from(new Set(quotes.flatMap((q: Quote) => q.coverageOptions)));
     
     const htmlContent = generateHTMLContentHelper(sortedQuotes, allCoverageOptions, referenceNumber);
     const fileName = `NSIB_${quotes[0].customerName.replace(/\s/g, '_')}_${quotes[0].make}_${quotes[0].model}_${referenceNumber}.html`;
@@ -705,7 +771,7 @@ export default function App() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        throw new Error('HTTP ' + response.status + ': ' + errorText);
       }
 
       const result = await response.json();
@@ -714,45 +780,71 @@ export default function App() {
         throw new Error(result.error || 'Upload failed');
       }
       
-      // Save to localStorage AND cloud
+      // Save to localStorage - UPDATE existing or ADD new
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const newComparison: SavedComparison = {
-        id: Date.now().toString(),
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === comparisonId || h.referenceNumber === referenceNumber);
+      
+      const comparisonData: SavedComparison = {
+        id: comparisonId,
         date: new Date().toISOString(),
-        vehicle: `${quotes[0].make} ${quotes[0].model}`,
+        vehicle: quotes[0].make + ' ' + quotes[0].model,
         quotes: quotes,
         referenceNumber: referenceNumber,
         fileUrl: result.url,
         createdBy: getCurrentUserName(),
       };
-      savedHistory.unshift(newComparison);
+      
+      if (existingIndex !== -1) {
+        // Update existing
+        savedHistory[existingIndex] = comparisonData;
+      } else {
+        // Add new
+        savedHistory.unshift(comparisonData);
+      }
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
 
       // Save to cloud
       await fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item: newComparison }),
+        body: JSON.stringify({ item: comparisonData }),
       });
       
-      alert(`✅ Success!\n\n📥 File downloaded: ${fileName}\n🔗 Online URL: ${result.url}\n\nYou can continue editing quotes or start a new comparison.`);
+      // Update tracking state
+      setCurrentComparisonId(comparisonId);
+      setCurrentReferenceNumber(referenceNumber);
+      
+      const actionText = existingIndex !== -1 ? 'Updated' : 'Saved';
+      alert(actionText + ' Successfully!\n\nFile: ' + fileName + '\nURL: ' + result.url + '\nRef: ' + referenceNumber);
       
     } catch (error) {
       console.error('Upload error:', error);
-      alert(`⚠️ File downloaded locally, but cloud upload failed:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nYou can continue editing quotes or start a new comparison.`);
       
       // Still save to history without URL
       const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const newComparison: SavedComparison = {
-        id: Date.now().toString(),
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === comparisonId || h.referenceNumber === referenceNumber);
+      
+      const comparisonData: SavedComparison = {
+        id: comparisonId,
         date: new Date().toISOString(),
-        vehicle: `${quotes[0].make} ${quotes[0].model}`,
+        vehicle: quotes[0].make + ' ' + quotes[0].model,
         quotes: quotes,
         referenceNumber: referenceNumber,
         createdBy: getCurrentUserName(),
       };
-      savedHistory.unshift(newComparison);
+      
+      if (existingIndex !== -1) {
+        savedHistory[existingIndex] = comparisonData;
+      } else {
+        savedHistory.unshift(comparisonData);
+      }
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
+      
+      // Update tracking state
+      setCurrentComparisonId(comparisonId);
+      setCurrentReferenceNumber(referenceNumber);
+      
+      alert('File downloaded locally. Cloud upload failed.\nRef: ' + referenceNumber);
     }
   };
 
@@ -763,6 +855,9 @@ export default function App() {
       }
     }
     setQuotes([]);
+    // UPDATED: Clear tracking state for new comparison
+    setCurrentComparisonId(null);
+    setCurrentReferenceNumber(null);
     setFormData({
       enquiryNumber: '',
       customerName: '',
@@ -787,6 +882,9 @@ export default function App() {
 
   const loadComparison = (comparison: SavedComparison) => {
     setQuotes(comparison.quotes);
+    // UPDATED: Set tracking state when loading existing comparison
+    setCurrentComparisonId(comparison.id);
+    setCurrentReferenceNumber(comparison.referenceNumber);
     setFormData({
       enquiryNumber: comparison.quotes[0].enquiryNumber,
       customerName: comparison.quotes[0].customerName,
@@ -806,30 +904,36 @@ export default function App() {
       isRenewal: false,
     });
     setCurrentPage('generator');
-    alert(`✅ Loaded ${comparison.quotes.length} quotes. You can now edit or add more quotes.`);
+    alert('Loaded ' + comparison.quotes.length + ' quotes.\nRef: ' + comparison.referenceNumber + '\n\nEditing will update this comparison with the same reference number.');
   };
 
   const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
-  const allCoverageOptions = [...new Set(quotes.flatMap(q => q.coverageOptions))];
+  const allCoverageOptions: string[] = Array.from(new Set(quotes.flatMap((q: Quote) => q.coverageOptions)));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-5">
       <div className="max-w-[1800px] mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">NSIB Insurance Quote System</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">NSIB Insurance Quote System</h1>
+          {/* NEW: Show current reference number when editing */}
+          {currentReferenceNumber && (
+            <div className="text-sm text-indigo-600 font-mono mb-2">
+              Current Reference: {currentReferenceNumber} (Editing Mode)
+            </div>
+          )}
           
           <div className="flex justify-center gap-4">
             <button 
               onClick={() => setCurrentPage('generator')} 
               className={`px-8 py-3 rounded-lg font-bold transition ${currentPage === 'generator' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
             >
-              📝 Quote Generator
+              Quote Generator
             </button>
             <button 
               onClick={() => setCurrentPage('history')} 
               className={`px-8 py-3 rounded-lg font-bold transition ${currentPage === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
             >
-              📁 Saved History
+              Saved History
             </button>
           </div>
         </div>
@@ -865,6 +969,7 @@ export default function App() {
             startNewComparison={startNewComparison}
             sortedQuotes={sortedQuotes}
             allCoverageOptions={allCoverageOptions}
+            currentReferenceNumber={currentReferenceNumber}
           />
         ) : (
           <SavedHistoryPage loadComparison={loadComparison} />
@@ -922,6 +1027,7 @@ interface QuoteGeneratorPageProps {
   startNewComparison: () => void;
   sortedQuotes: Quote[];
   allCoverageOptions: string[];
+  currentReferenceNumber: string | null;
 }
 
 // ============ QUOTE GENERATOR PAGE ============
@@ -956,6 +1062,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
     startNewComparison,
     sortedQuotes,
     allCoverageOptions,
+    currentReferenceNumber,
   } = props;
 
   return (
@@ -972,13 +1079,13 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
               onClick={() => setBusinessType('Private')}
               className={`p-3 rounded-lg font-bold transition ${businessType === 'Private' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border-2 border-gray-300'}`}
             >
-              🚗 Private
+              Private
             </button>
             <button
               onClick={() => setBusinessType('Commercial')}
               className={`p-3 rounded-lg font-bold transition ${businessType === 'Commercial' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border-2 border-gray-300'}`}
             >
-              🚚 Commercial
+              Commercial
             </button>
           </div>
         </div>
@@ -1196,17 +1303,17 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
           </div>
 
           <button onClick={addQuote} className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition">
-            ➕ Add Quote to Comparison
+            Add Quote to Comparison
           </button>
         </div>
 
         {quotes.length > 0 && (
           <>
             <button onClick={saveAndDownload} className="w-full bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition mb-2">
-              💾 Save & Download ({quotes.length} quotes)
+              {currentReferenceNumber ? 'Update & Download' : 'Save & Download'} ({quotes.length} quotes)
             </button>
             <button onClick={startNewComparison} className="w-full bg-orange-600 text-white p-3 rounded-lg font-bold hover:bg-orange-700 transition">
-              🔄 Start New Comparison
+              Start New Comparison
             </button>
           </>
         )}
@@ -1237,15 +1344,15 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                       <div className="flex gap-1 justify-center mt-2">
                         {editingQuoteId === q.id ? (
                           <button onClick={() => setEditingQuoteId(null)} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">
-                            ✓ Done
+                            Done
                           </button>
                         ) : (
                           <button onClick={() => setEditingQuoteId(q.id)} className="bg-yellow-500 text-gray-900 px-2 py-1 rounded text-xs hover:bg-yellow-600">
-                            ✏️ Edit
+                            Edit
                           </button>
                         )}
                         <button onClick={() => removeQuote(q.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
-                          🗑️
+                          Del
                         </button>
                       </div>
                     </th>
@@ -1547,8 +1654,8 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                           </>
                         ) : (
                           <>
-                            {q.isRecommended && <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">⭐ Recommended</span>}
-                            {q.isRenewal && <span className="bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs">🔄 Renewal</span>}
+                            {q.isRecommended && <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">Recommended</span>}
+                            {q.isRenewal && <span className="bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs">Renewal</span>}
                             {!q.isRecommended && !q.isRenewal && <span className="text-gray-400 text-xs">-</span>}
                           </>
                         )}
@@ -1645,7 +1752,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     return (
       <div className="bg-white rounded-xl p-5 shadow-2xl">
         <div className="text-center py-20">
-          <div className="text-xl font-bold text-gray-600">☁️ Loading history from cloud...</div>
+          <div className="text-xl font-bold text-gray-600">Loading history from cloud...</div>
         </div>
       </div>
     );
@@ -1656,13 +1763,13 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Saved History</h2>
-          <p className="text-sm text-gray-600">☁️ Synced across all devices • Survives cache clearing</p>
+          <p className="text-sm text-gray-600">Synced across all devices</p>
         </div>
         <button 
           onClick={loadHistory}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition"
         >
-          🔄 Refresh
+          Refresh
         </button>
       </div>
 
@@ -1671,7 +1778,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
         <div className="relative">
           <input
             type="text"
-            placeholder="🔍 Search by Customer Name, Enquiry Number, or Reference..."
+            placeholder="Search by Customer Name, Enquiry Number, or Reference..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none text-gray-900 bg-white"
@@ -1681,7 +1788,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
               onClick={() => setSearchTerm('')}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              ✕
+              X
             </button>
           )}
         </div>
@@ -1707,7 +1814,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
               <div className="mb-3">
                 <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
                 {comparison.createdBy && (
-                  <div className="text-xs text-orange-600">👤 Created by: {comparison.createdBy}</div>
+                  <div className="text-xs text-orange-600">Created by: {comparison.createdBy}</div>
                 )}
                 {comparison.quotes?.[0]?.customerName && (
                   <div className="text-sm text-gray-700">Customer: {comparison.quotes[0].customerName}</div>
@@ -1724,9 +1831,9 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
                 <div className="text-xs text-gray-600 max-h-24 overflow-y-auto">
                   {comparison.quotes?.map(q => (
                     <div key={q.id} className="truncate">
-                      • {q.company} - AED {q.total?.toFixed(2) || '0.00'}
-                      {q.isRenewal && ' 🔄'}
-                      {q.isRecommended && ' ⭐'}
+                      - {q.company} - AED {q.total?.toFixed(2) || '0.00'}
+                      {q.isRenewal && ' (R)'}
+                      {q.isRecommended && ' (*)'}
                     </div>
                   )) || <div className="text-gray-400">No quote details</div>}
                 </div>
@@ -1737,7 +1844,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
                   onClick={() => loadComparison(comparison)} 
                   className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
                 >
-                  ✏️ Load & Edit
+                  Load & Edit
                 </button>
                 {comparison.fileUrl && (
                   <a 
@@ -1746,11 +1853,11 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
                     rel="noopener noreferrer"
                     className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700 transition text-center"
                   >
-                    🔗 View
+                    View
                   </a>
                 )}
                 <button onClick={() => deleteComparison(comparison.id)} className="bg-red-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-red-700 transition">
-                  🗑️
+                  Del
                 </button>
               </div>
             </div>
