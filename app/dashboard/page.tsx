@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ============ TYPES ============
 interface Quote {
@@ -369,8 +369,6 @@ function generateHTMLContentHelper(sortedQuotes: Quote[], allCoverageOptions: st
         .renewal-badge { background: #ffc107; color: #000 !important; padding: 0.5mm 2mm; border-radius: 10mm; font-size: 8px; font-weight: bold; display: inline-block; margin-top: 0.5mm; }
         .recommended-badge { background: #28a745; color: #fff !important; padding: 0.5mm 2mm; border-radius: 10mm; font-size: 8px; font-weight: bold; display: inline-block; margin-top: 0.5mm; }
         .advisor-comment-cell { background: #e3f2fd !important; font-size: 7px; text-align: left !important; padding: 1.5mm !important; line-height: 1.2; color: #000 !important; vertical-align: top !important; }
-        .disclaimer h4 { font-size: 8px; margin-bottom: 0.5mm; color: #856404; }
-        .disclaimer p { margin-bottom: 0.3mm; }
         .footer-contact { position: absolute; bottom: 0; left: 0; right: 0; width: 210mm; background: linear-gradient(135deg, rgba(255, 107, 107, 0.85) 0%, rgba(238, 90, 111, 0.85) 100%); padding: 2mm 10mm; display: flex; justify-content: space-between; color: #fff !important; font-size: 8px; line-height: 1.2; }
         .footer-left, .footer-right { flex: 1; color: #fff !important; }
         .footer-right { text-align: right; }
@@ -524,9 +522,11 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<'generator' | 'history'>('generator');
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [businessType, setBusinessType] = useState<'Private' | 'Commercial'>('Private');
-  // NEW: Track current comparison ID and reference number for edit/update
+  
+  // CRITICAL: Track current comparison - these persist the identity of the comparison being edited
   const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(null);
   const [currentReferenceNumber, setCurrentReferenceNumber] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
     enquiryNumber: '',
     customerName: '',
@@ -597,19 +597,11 @@ export default function App() {
     );
   };
 
-  // NEW: Auto-save function to save quotes automatically
-  const autoSaveQuotes = async (updatedQuotes: Quote[]) => {
+  // FIXED: Auto-save function that properly updates existing comparison
+  const autoSaveQuotes = useCallback(async (updatedQuotes: Quote[], refNum: string, compId: string) => {
     if (updatedQuotes.length === 0) return;
     
     try {
-      const refNum = currentReferenceNumber || generateReferenceNumber();
-      const compId = currentComparisonId || Date.now().toString();
-      
-      if (!currentReferenceNumber) {
-        setCurrentReferenceNumber(refNum);
-        setCurrentComparisonId(compId);
-      }
-      
       const comparisonData: SavedComparison = {
         id: compId,
         date: new Date().toISOString(),
@@ -619,18 +611,23 @@ export default function App() {
         createdBy: getCurrentUserName(),
       };
       
-      // Save to localStorage
-      const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === compId || h.referenceNumber === refNum);
+      // Save to localStorage - find by REFERENCE NUMBER (most reliable)
+      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === refNum);
       
       if (existingIndex !== -1) {
+        // UPDATE existing entry - keep the file URL if it exists
+        comparisonData.fileUrl = savedHistory[existingIndex].fileUrl;
         savedHistory[existingIndex] = comparisonData;
+        console.log('Auto-save: Updated existing comparison at index', existingIndex);
       } else {
+        // ADD new entry at the beginning
         savedHistory.unshift(comparisonData);
+        console.log('Auto-save: Added new comparison');
       }
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
       
-      // Save to cloud in background
+      // Save to cloud in background (non-blocking)
       fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -640,7 +637,7 @@ export default function App() {
     } catch (error) {
       console.error('Auto-save error:', error);
     }
-  };
+  }, []);
 
   const addQuote = () => {
     if (!formData.enquiryNumber || !formData.customerName || !formData.vehicleMake || !formData.vehicleModel || !formData.insuranceCompany || !formData.premium) {
@@ -684,10 +681,21 @@ export default function App() {
     setQuotes(updatedQuotes);
     clearForm();
     
-    // Auto-save after adding quote
-    autoSaveQuotes(updatedQuotes);
+    // FIXED: Generate reference number ONCE if not exists, then always use it
+    let refNum = currentReferenceNumber;
+    let compId = currentComparisonId;
     
-    alert('Quote added to comparison!');
+    if (!refNum) {
+      refNum = generateReferenceNumber();
+      compId = Date.now().toString();
+      setCurrentReferenceNumber(refNum);
+      setCurrentComparisonId(compId);
+    }
+    
+    // Auto-save with the SAME reference number
+    autoSaveQuotes(updatedQuotes, refNum, compId!);
+    
+    alert('Quote added! Ref: ' + refNum);
   };
 
   const clearForm = () => {
@@ -718,8 +726,8 @@ export default function App() {
     if (editingQuoteId === id) setEditingQuoteId(null);
     
     // Auto-save after removing quote (if quotes remain)
-    if (updatedQuotes.length > 0) {
-      autoSaveQuotes(updatedQuotes);
+    if (updatedQuotes.length > 0 && currentReferenceNumber && currentComparisonId) {
+      autoSaveQuotes(updatedQuotes, currentReferenceNumber, currentComparisonId);
     }
   };
 
@@ -739,7 +747,9 @@ export default function App() {
     setQuotes(updatedQuotes);
     
     // Auto-save after updating quote field
-    autoSaveQuotes(updatedQuotes);
+    if (currentReferenceNumber && currentComparisonId) {
+      autoSaveQuotes(updatedQuotes, currentReferenceNumber, currentComparisonId);
+    }
   };
 
   const saveAndDownload = async () => {
@@ -748,9 +758,15 @@ export default function App() {
       return;
     }
 
-    // UPDATED: Use existing reference number if editing, otherwise generate new
+    // Use existing reference number (should already be set from addQuote)
     const referenceNumber = currentReferenceNumber || generateReferenceNumber();
     const comparisonId = currentComparisonId || Date.now().toString();
+    
+    // Update state if we had to generate new ones
+    if (!currentReferenceNumber) {
+      setCurrentReferenceNumber(referenceNumber);
+      setCurrentComparisonId(comparisonId);
+    }
     
     const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
     const allCoverageOptions: string[] = Array.from(new Set(quotes.flatMap((q: Quote) => q.coverageOptions)));
@@ -780,9 +796,9 @@ export default function App() {
         throw new Error(result.error || 'Upload failed');
       }
       
-      // Save to localStorage - UPDATE existing or ADD new
-      const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === comparisonId || h.referenceNumber === referenceNumber);
+      // Save to localStorage - UPDATE existing by reference number
+      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === referenceNumber);
       
       const comparisonData: SavedComparison = {
         id: comparisonId,
@@ -797,9 +813,11 @@ export default function App() {
       if (existingIndex !== -1) {
         // Update existing
         savedHistory[existingIndex] = comparisonData;
+        console.log('Save: Updated existing at index', existingIndex);
       } else {
         // Add new
         savedHistory.unshift(comparisonData);
+        console.log('Save: Added new');
       }
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
 
@@ -810,19 +828,14 @@ export default function App() {
         body: JSON.stringify({ item: comparisonData }),
       });
       
-      // Update tracking state
-      setCurrentComparisonId(comparisonId);
-      setCurrentReferenceNumber(referenceNumber);
-      
-      const actionText = existingIndex !== -1 ? 'Updated' : 'Saved';
-      alert(actionText + ' Successfully!\n\nFile: ' + fileName + '\nURL: ' + result.url + '\nRef: ' + referenceNumber);
+      alert('Saved! Ref: ' + referenceNumber + '\nFile: ' + fileName);
       
     } catch (error) {
       console.error('Upload error:', error);
       
       // Still save to history without URL
-      const savedHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.id === comparisonId || h.referenceNumber === referenceNumber);
+      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
+      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === referenceNumber);
       
       const comparisonData: SavedComparison = {
         id: comparisonId,
@@ -840,11 +853,7 @@ export default function App() {
       }
       localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
       
-      // Update tracking state
-      setCurrentComparisonId(comparisonId);
-      setCurrentReferenceNumber(referenceNumber);
-      
-      alert('File downloaded locally. Cloud upload failed.\nRef: ' + referenceNumber);
+      alert('File downloaded. Cloud upload failed.\nRef: ' + referenceNumber);
     }
   };
 
@@ -855,7 +864,7 @@ export default function App() {
       }
     }
     setQuotes([]);
-    // UPDATED: Clear tracking state for new comparison
+    // CRITICAL: Clear tracking state for new comparison
     setCurrentComparisonId(null);
     setCurrentReferenceNumber(null);
     setFormData({
@@ -882,16 +891,16 @@ export default function App() {
 
   const loadComparison = (comparison: SavedComparison) => {
     setQuotes(comparison.quotes);
-    // UPDATED: Set tracking state when loading existing comparison
+    // CRITICAL: Set tracking state when loading - this ensures edits update the same record
     setCurrentComparisonId(comparison.id);
     setCurrentReferenceNumber(comparison.referenceNumber);
     setFormData({
-      enquiryNumber: comparison.quotes[0].enquiryNumber,
-      customerName: comparison.quotes[0].customerName,
-      vehicleMake: comparison.quotes[0].make,
-      vehicleModel: comparison.quotes[0].model,
-      yearModel: comparison.quotes[0].year,
-      vehicleValue: comparison.quotes[0].value,
+      enquiryNumber: comparison.quotes[0]?.enquiryNumber || '',
+      customerName: comparison.quotes[0]?.customerName || '',
+      vehicleMake: comparison.quotes[0]?.make || '',
+      vehicleModel: comparison.quotes[0]?.model || '',
+      yearModel: comparison.quotes[0]?.year || '',
+      vehicleValue: comparison.quotes[0]?.value || '',
       repairType: '',
       insuranceCompany: '',
       productType: '',
@@ -904,7 +913,7 @@ export default function App() {
       isRenewal: false,
     });
     setCurrentPage('generator');
-    alert('Loaded ' + comparison.quotes.length + ' quotes.\nRef: ' + comparison.referenceNumber + '\n\nEditing will update this comparison with the same reference number.');
+    alert('Loaded ' + comparison.quotes.length + ' quotes.\nRef: ' + comparison.referenceNumber + '\n\nAny changes will update THIS comparison.');
   };
 
   const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
@@ -915,14 +924,14 @@ export default function App() {
       <div className="max-w-[1800px] mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">NSIB Insurance Quote System</h1>
-          {/* NEW: Show current reference number when editing */}
+          {/* Show current reference number when editing */}
           {currentReferenceNumber && (
-            <div className="text-sm text-indigo-600 font-mono mb-2">
-              Current Reference: {currentReferenceNumber} (Editing Mode)
+            <div className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-mono text-sm mb-2">
+              Editing: Ref {currentReferenceNumber} ({quotes.length} quotes)
             </div>
           )}
           
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 mt-2">
             <button 
               onClick={() => setCurrentPage('generator')} 
               className={`px-8 py-3 rounded-lg font-bold transition ${currentPage === 'generator' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
@@ -1061,7 +1070,6 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
     saveAndDownload,
     startNewComparison,
     sortedQuotes,
-    allCoverageOptions,
     currentReferenceNumber,
   } = props;
 
@@ -1290,9 +1298,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">
-              Advisor Comment (Optional)
-            </label>
+            <label className="block text-xs font-bold mb-1 text-gray-800">Advisor Comment (Optional)</label>
             <textarea
               className="w-full p-2 border-2 rounded text-sm text-gray-900 bg-white focus:border-indigo-500"
               placeholder="Enter specific comment for this insurance company..."
@@ -1485,7 +1491,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                   ))}
                 </tr>
 
-                {/* Coverage Options - SHOW ALL OPTIONS when editing */}
+                {/* Coverage Options */}
                 {COVERAGE_OPTIONS.map(option => (
                   <tr key={option.id}>
                     <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">{option.label}</td>
@@ -1732,7 +1738,6 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     });
   };
 
-  // Filter history based on search term
   const filteredHistory = history.filter(comparison => {
     if (!searchTerm.trim()) return true;
     
@@ -1752,7 +1757,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     return (
       <div className="bg-white rounded-xl p-5 shadow-2xl">
         <div className="text-center py-20">
-          <div className="text-xl font-bold text-gray-600">Loading history from cloud...</div>
+          <div className="text-xl font-bold text-gray-600">Loading history...</div>
         </div>
       </div>
     );
@@ -1773,7 +1778,6 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
         </button>
       </div>
 
-      {/* Search Box */}
       <div className="mb-4">
         <div className="relative">
           <input
@@ -1801,7 +1805,7 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
       
       {history.length === 0 ? (
         <div className="text-center text-gray-400 italic py-20">
-          No saved comparisons yet. Create a comparison and save it to see it here.
+          No saved comparisons yet.
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="text-center text-gray-400 italic py-20">
