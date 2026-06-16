@@ -13,15 +13,53 @@ interface SavedComparison {
   createdBy?: string;
 }
 
-// Helper to get the current history
+// Helper to get the current history - TRY MULTIPLE FILE NAMES
 async function getHistory(): Promise<SavedComparison[]> {
   try {
-    const { blobs } = await list({ prefix: HISTORY_FILE });
-    if (blobs.length === 0) return [];
+    // First, list ALL blobs to see what files exist
+    const { blobs } = await list();
     
-    const response = await fetch(blobs[0].url);
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    // Log all blob names for debugging
+    console.log('All blobs found:', blobs.map(b => b.pathname));
+    
+    // Try to find history file with different possible names
+    const possibleNames = [
+      'quotes-history-shared.json',
+      'quotes-history.json', 
+      'history.json',
+      'quotesHistory.json'
+    ];
+    
+    for (const name of possibleNames) {
+      const historyBlob = blobs.find(b => b.pathname === name || b.pathname.includes(name));
+      if (historyBlob) {
+        console.log('Found history at:', historyBlob.pathname);
+        const response = await fetch(historyBlob.url);
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('Loaded', data.length, 'items from', historyBlob.pathname);
+          return data;
+        }
+      }
+    }
+    
+    // If no named file found, try any JSON file that might contain history
+    for (const blob of blobs) {
+      if (blob.pathname.endsWith('.json') && !blob.pathname.includes('NSIB_')) {
+        try {
+          const response = await fetch(blob.url);
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0 && data[0].referenceNumber) {
+            console.log('Found history data in:', blob.pathname, 'with', data.length, 'items');
+            return data;
+          }
+        } catch {
+          // Not a valid JSON or not history data
+        }
+      }
+    }
+    
+    return [];
   } catch {
     return [];
   }
@@ -36,10 +74,26 @@ async function saveHistory(history: SavedComparison[]): Promise<string> {
   return blob.url;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const debug = searchParams.get('debug');
+    
+    // Debug mode - list all blobs
+    if (debug === 'true') {
+      const { blobs } = await list();
+      return NextResponse.json({ 
+        success: true, 
+        blobs: blobs.map(b => ({ 
+          name: b.pathname, 
+          url: b.url,
+          size: b.size 
+        }))
+      });
+    }
+    
     const history = await getHistory();
-    return NextResponse.json({ success: true, history });
+    return NextResponse.json({ success: true, history, count: history.length });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch history' }, { status: 500 });
   }
@@ -55,7 +109,7 @@ export async function POST(request: NextRequest) {
     
     const history = await getHistory();
     
-    // CRITICAL FIX: Find existing entry by REFERENCE NUMBER
+    // Find existing entry by REFERENCE NUMBER
     const existingIndex = history.findIndex(
       (h: SavedComparison) => h.referenceNumber === item.referenceNumber
     );
