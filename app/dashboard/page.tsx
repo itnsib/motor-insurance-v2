@@ -891,18 +891,42 @@ export default function App() {
     setEditingQuoteId(null);
   };
 
-  const loadComparison = (comparison: SavedComparison) => {
-    setQuotes(comparison.quotes);
+  const loadComparison = async (comparison: SavedComparison) => {
+    let quotesToLoad: Quote[] = comparison.quotes;
+
+    // Recovered records carry only a placeholder quote. Reconstruct the real
+    // quotes from the saved HTML document before loading into the editor.
+    const isRecovered = comparison.rebuilt || comparison.quotes?.[0]?.recovered;
+    if (isRecovered) {
+      if (!comparison.fileUrl) {
+        alert('This recovered record has no document to reconstruct from.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/parse-document?url=' + encodeURIComponent(comparison.fileUrl));
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.quotes) || data.quotes.length === 0) {
+          alert('Could not reconstruct this record for editing.\n' + (data.error || '') + '\n\nYou can still use View to open the document.');
+          return;
+        }
+        quotesToLoad = data.quotes as Quote[];
+      } catch {
+        alert('Could not reach the document to reconstruct it. Try again, or use View.');
+        return;
+      }
+    }
+
+    setQuotes(quotesToLoad);
     // CRITICAL: Set tracking state when loading - this ensures edits update the same record
     setCurrentComparisonId(comparison.id);
     setCurrentReferenceNumber(comparison.referenceNumber);
     setFormData({
-      enquiryNumber: comparison.quotes[0]?.enquiryNumber || '',
-      customerName: comparison.quotes[0]?.customerName || '',
-      vehicleMake: comparison.quotes[0]?.make || '',
-      vehicleModel: comparison.quotes[0]?.model || '',
-      yearModel: comparison.quotes[0]?.year || '',
-      vehicleValue: comparison.quotes[0]?.value || '',
+      enquiryNumber: quotesToLoad[0]?.enquiryNumber || '',
+      customerName: quotesToLoad[0]?.customerName || '',
+      vehicleMake: quotesToLoad[0]?.make || '',
+      vehicleModel: quotesToLoad[0]?.model || '',
+      yearModel: quotesToLoad[0]?.year || '',
+      vehicleValue: quotesToLoad[0]?.value || '',
       repairType: '',
       insuranceCompany: '',
       productType: '',
@@ -915,7 +939,7 @@ export default function App() {
       isRenewal: false,
     });
     setCurrentPage('generator');
-    alert('Loaded ' + comparison.quotes.length + ' quotes.\nRef: ' + comparison.referenceNumber + '\n\nAny changes will update THIS comparison.');
+    alert('Loaded ' + quotesToLoad.length + ' quotes.\nRef: ' + comparison.referenceNumber + '\n\nAny changes will update THIS comparison.');
   };
 
   const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
@@ -1682,7 +1706,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
 // ============ SAVED HISTORY PAGE ============
 interface SavedHistoryPageProps {
-  loadComparison: (comparison: SavedComparison) => void;
+  loadComparison: (comparison: SavedComparison) => void | Promise<void>;
 }
 
 function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
@@ -1846,22 +1870,13 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
               </div>
               
               <div className="flex gap-2 flex-wrap">
-                {comparison.rebuilt || comparison.quotes?.[0]?.recovered ? (
-                  <button
-                    disabled
-                    title="Recovered record — full quote data isn't available to edit. Use View to open the saved document."
-                    className="flex-1 bg-gray-300 text-gray-500 px-3 py-2 rounded text-sm font-bold cursor-not-allowed"
-                  >
-                    Recovered
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => loadComparison(comparison)} 
-                    className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
-                  >
-                    Load & Edit
-                  </button>
-                )}
+                <button 
+                  onClick={() => loadComparison(comparison)} 
+                  className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
+                  title={(comparison.rebuilt || comparison.quotes?.[0]?.recovered) ? 'Reconstructs the full quotes from the saved document, then opens for editing.' : undefined}
+                >
+                  {(comparison.rebuilt || comparison.quotes?.[0]?.recovered) ? 'Rebuild & Edit' : 'Load & Edit'}
+                </button>
                 {comparison.fileUrl && (
                   <a 
                     href={comparison.fileUrl} 
