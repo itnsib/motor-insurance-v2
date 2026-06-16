@@ -3,34 +3,213 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const HISTORY_FILE = 'quotes-history-shared.json';
 
-// Helper to get the current history
-async function getHistory(): Promise<any[]> {
+// A single quote inside a comparison. Kept loose but typed (no `any`) because
+// recovered records only carry a subset of these fields.
+interface Quote {
+  id?: string;
+  company?: string;
+  customerName?: string;
+  enquiryNumber?: string;
+  make?: string;
+  model?: string;
+  premium?: number;
+  vat?: number;
+  total?: number;
+  isRecommended?: boolean;
+  isRenewal?: boolean;
+  recovered?: boolean;
+  [key: string]: unknown;
+}
+
+interface SavedComparison {
+  id: string;
+  date: string;
+  vehicle: string;
+  quotes: Quote[];
+  referenceNumber: string;
+  fileUrl?: string;
+  createdBy?: string;
+  rebuilt?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Read the current shared history JSON. Uses prefix match (same approach as the
+// original working route) and reads the matching blob.
+// ---------------------------------------------------------------------------
+async function getHistory(): Promise<SavedComparison[]> {
   try {
     const { blobs } = await list({ prefix: HISTORY_FILE });
     if (blobs.length === 0) return [];
-    
-    const response = await fetch(blobs[0].url);
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+
+    const response = await fetch(blobs[0].url, { cache: 'no-store' });
+    const data: unknown = await response.json();
+    return Array.isArray(data) ? (data as SavedComparison[]) : [];
   } catch {
-    // Error fetching history, return empty array
     return [];
   }
 }
 
-// Helper to save history
-async function saveHistory(history: any[]): Promise<string> {
+// ---------------------------------------------------------------------------
+// Save history. allowOverwrite is REQUIRED because the file already exists —
+// without it the put() throws and the save silently fails.
+// ---------------------------------------------------------------------------
+async function saveHistory(history: SavedComparison[]): Promise<string> {
   const blob = await put(HISTORY_FILE, JSON.stringify(history), {
     access: 'public',
     addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
   });
   return blob.url;
 }
 
-export async function GET() {
+// ---------------------------------------------------------------------------
+// Parse an NSIB_*.html blob pathname into the pieces needed for a history card.
+//   NSIB_{CUSTOMER...}_{MAKE}_{MODEL}_{REF}.html
+//   NSIB_{CUSTOMER...}_{MAKE}_{MODEL}_{REF}_UPDATED_{timestamp}.html
+// ---------------------------------------------------------------------------
+interface ParsedBlob {
+  referenceNumber: string;
+  customer: string;
+  vehicle: string;
+  make: string;
+  model: string;
+  fileUrl: string;
+  updatedTs: number;
+}
+
+function parseBlobName(pathname: string, url: string): ParsedBlob | null {
+  if (!pathname.startsWith('NSIB_') || !pathname.endsWith('.html')) return null;
+
+  let base = pathname.slice('NSIB_'.length, -'.html'.length);
+
+  let updatedTs = 0;
+  const updMatch = base.match(/_UPDATED_(\d+)$/);
+  if (updMatch) {
+    updatedTs = parseInt(updMatch[1], 10) || 0;
+    base = base.slice(0, updMatch.index);
+  }
+
+  const refMatch = base.match(/_(\d{4,})$/);
+  if (!refMatch || refMatch.index === undefined) return null;
+  const referenceNumber = refMatch[1];
+  const beforeRef = base.slice(0, refMatch.index);
+
+  const parts = beforeRef.split('_').filter(Boolean);
+  let customer = beforeRef.replace(/_/g, ' ').trim();
+  let make = '';
+  let model = '';
+  if (parts.length >= 2) {
+    make = parts[parts.length - 2];
+    model = parts[parts.length - 1];
+    customer = parts.slice(0, parts.length - 2).join(' ').trim() || customer;
+  } else if (parts.length === 1) {
+    make = parts[0];
+  }
+  const vehicle = `${make} ${model}`.trim();
+
+  return { referenceNumber, customer, vehicle, make, model, fileUrl: url, updatedTs };
+}
+
+// ---------------------------------------------------------------------------
+// Rebuild history from every NSIB_*.html blob. Paginates through all pages,
+// keeps the newest file per reference number, and merges with existing entries
+// (preserving any record that already has real structured quote data).
+// ---------------------------------------------------------------------------
+async function rebuildFromBlobs(): Promise<{ added: number; total: number; scanned: number }> {
+  const allBlobs: { pathname: string; url: string }[] = [];
+  let cursor: string | undefined = undefined;
+  let hasMore = true;
+  while (hasMore) {
+    const page: Awaited<ReturnType<typeof list>> = await list({ cursor, limit: 1000 });
+    for (const b of page.blobs) {
+      allBlobs.push({ pathname: b.pathname, url: b.url });
+    }
+    cursor = page.cursor;
+    hasMore = page.hasMore;
+  }
+
+  const newest = new Map<string, ParsedBlob>();
+  let scanned = 0;
+  for (const blob of allBlobs) {
+    const parsed = parseBlobName(blob.pathname, blob.url);
+    if (!parsed) continue;
+    scanned++;
+    const existing = newest.get(parsed.referenceNumber);
+    if (!existing || parsed.updatedTs >= existing.updatedTs) {
+      newest.set(parsed.referenceNumber, parsed);
+    }
+  }
+
+  const existingHistory = await getHistory();
+  const byRef = new Map<string, SavedComparison>();
+  for (const item of existingHistory) {
+    if (item.referenceNumber) byRef.set(item.referenceNumber, item);
+  }
+
+  let added = 0;
+  for (const entry of newest) {
+    const ref = entry[0];
+    const parsed = entry[1];
+    const existing = byRef.get(ref);
+
+    // Keep richer, editable records untouched; just backfill a fileUrl.
+    if (existing && Array.isArray(existing.quotes) && existing.quotes.length > 0 && existing.quotes[0].total !== undefined && !existing.quotes[0].recovered) {
+      if (!existing.fileUrl) existing.fileUrl = parsed.fileUrl;
+      continue;
+    }
+
+    byRef.set(ref, {
+      id: existing?.id || `rebuilt_${ref}`,
+      date: existing?.date || new Date().toISOString(),
+      vehicle: existing?.vehicle || parsed.vehicle,
+      referenceNumber: ref,
+      fileUrl: parsed.fileUrl,
+      createdBy: existing?.createdBy || 'Recovered',
+      rebuilt: true,
+      quotes: [
+        {
+          id: `rec_${ref}`,
+          company: 'View document for full details',
+          customerName: parsed.customer,
+          enquiryNumber: '',
+          make: parsed.make,
+          model: parsed.model,
+          premium: 0,
+          vat: 0,
+          total: 0,
+          recovered: true,
+        },
+      ],
+    });
+    if (!existing) added++;
+  }
+
+  const merged = Array.from(byRef.values()).sort((a, b) => {
+    const da = Date.parse(a.date || '') || 0;
+    const db = Date.parse(b.date || '') || 0;
+    if (db !== da) return db - da;
+    return b.referenceNumber.localeCompare(a.referenceNumber);
+  });
+
+  await saveHistory(merged);
+  return { added, total: merged.length, scanned };
+}
+
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    if (searchParams.get('debug') === 'true') {
+      const { blobs } = await list();
+      return NextResponse.json({
+        success: true,
+        blobs: blobs.map((b) => ({ name: b.pathname, url: b.url, size: b.size })),
+      });
+    }
+
     const history = await getHistory();
-    return NextResponse.json({ success: true, history });
+    return NextResponse.json({ success: true, history, count: history.length });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch history' }, { status: 500 });
   }
@@ -38,35 +217,44 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { item } = await request.json();
-    
+    const { searchParams } = new URL(request.url);
+
+    // One-time recovery: POST /api/history?rebuild=true
+    if (searchParams.get('rebuild') === 'true') {
+      try {
+        const result = await rebuildFromBlobs();
+        return NextResponse.json({ success: true, ...result });
+      } catch (err) {
+        return NextResponse.json(
+          { success: false, error: 'Rebuild failed', detail: String(err) },
+          { status: 500 },
+        );
+      }
+    }
+
+    const body: unknown = await request.json();
+    const item = (body as { item?: SavedComparison }).item;
+
     if (!item || !item.referenceNumber) {
       return NextResponse.json({ success: false, error: 'Invalid item - missing referenceNumber' }, { status: 400 });
     }
-    
+
     const history = await getHistory();
-    
-    // CRITICAL FIX: Find existing entry by REFERENCE NUMBER (most reliable identifier)
-    const existingIndex = history.findIndex(
-      (h: any) => h.referenceNumber === item.referenceNumber
-    );
-    
+    const existingIndex = history.findIndex((h) => h.referenceNumber === item.referenceNumber);
+
     if (existingIndex !== -1) {
-      // UPDATE existing entry - preserve fileUrl if new item doesn't have one
       if (!item.fileUrl && history[existingIndex].fileUrl) {
         item.fileUrl = history[existingIndex].fileUrl;
       }
       history[existingIndex] = item;
     } else {
-      // ADD new entry at beginning
       history.unshift(item);
     }
-    
+
     await saveHistory(history);
-    
     return NextResponse.json({ success: true, updated: existingIndex !== -1 });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to save' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: 'Failed to save', detail: String(err) }, { status: 500 });
   }
 }
 
@@ -75,24 +263,21 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const refNum = searchParams.get('ref');
-    
+
     if (!id && !refNum) {
       return NextResponse.json({ success: false, error: 'Missing id or ref parameter' }, { status: 400 });
     }
-    
+
     let history = await getHistory();
-    
-    // Delete by ID or reference number
     if (refNum) {
-      history = history.filter((h: any) => h.referenceNumber !== refNum);
+      history = history.filter((h) => h.referenceNumber !== refNum);
     } else {
-      history = history.filter((h: any) => h.id !== id);
+      history = history.filter((h) => h.id !== id);
     }
-    
+
     await saveHistory(history);
-    
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to delete' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: 'Failed to delete', detail: String(err) }, { status: 500 });
   }
 }
