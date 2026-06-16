@@ -1,4 +1,4 @@
-import { put, list, del } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 
 const HISTORY_FILE = 'quotes-history-shared.json';
@@ -12,8 +12,8 @@ async function getHistory(): Promise<any[]> {
     const response = await fetch(blobs[0].url);
     const data = await response.json();
     return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching history:', error);
+  } catch {
+    // Error fetching history, return empty array
     return [];
   }
 }
@@ -27,12 +27,11 @@ async function saveHistory(history: any[]): Promise<string> {
   return blob.url;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const history = await getHistory();
     return NextResponse.json({ success: true, history });
-  } catch (error) {
-    console.error('GET error:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch history' }, { status: 500 });
   }
 }
@@ -45,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid item - missing referenceNumber' }, { status: 400 });
     }
     
-    let history = await getHistory();
+    const history = await getHistory();
     
     // CRITICAL FIX: Find existing entry by REFERENCE NUMBER (most reliable identifier)
     const existingIndex = history.findIndex(
@@ -58,18 +57,15 @@ export async function POST(request: NextRequest) {
         item.fileUrl = history[existingIndex].fileUrl;
       }
       history[existingIndex] = item;
-      console.log(`Updated existing entry at index ${existingIndex} for ref: ${item.referenceNumber}`);
     } else {
       // ADD new entry at beginning
       history.unshift(item);
-      console.log(`Added new entry for ref: ${item.referenceNumber}`);
     }
     
     await saveHistory(history);
     
     return NextResponse.json({ success: true, updated: existingIndex !== -1 });
-  } catch (error) {
-    console.error('POST error:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to save' }, { status: 500 });
   }
 }
@@ -96,8 +92,7 @@ export async function DELETE(request: NextRequest) {
     await saveHistory(history);
     
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('DELETE error:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to delete' }, { status: 500 });
   }
 }
