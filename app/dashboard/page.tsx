@@ -28,6 +28,7 @@ interface Quote {
   isRecommended: boolean;
   isRenewal: boolean;
   advisorComment: string;
+  recovered?: boolean;
 }
 
 interface SavedComparison {
@@ -38,6 +39,7 @@ interface SavedComparison {
   referenceNumber: string;
   fileUrl?: string;
   createdBy?: string;
+  rebuilt?: boolean;
 }
 
 interface CompanyDefaults {
@@ -1844,12 +1846,22 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
               </div>
               
               <div className="flex gap-2 flex-wrap">
-                <button 
-                  onClick={() => loadComparison(comparison)} 
-                  className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
-                >
-                  Load & Edit
-                </button>
+                {comparison.rebuilt || comparison.quotes?.[0]?.recovered ? (
+                  <button
+                    disabled
+                    title="Recovered record — full quote data isn't available to edit. Use View to open the saved document."
+                    className="flex-1 bg-gray-300 text-gray-500 px-3 py-2 rounded text-sm font-bold cursor-not-allowed"
+                  >
+                    Recovered
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => loadComparison(comparison)} 
+                    className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
+                  >
+                    Load & Edit
+                  </button>
+                )}
                 {comparison.fileUrl && (
                   <a 
                     href={comparison.fileUrl} 
