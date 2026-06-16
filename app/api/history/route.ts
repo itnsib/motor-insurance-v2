@@ -122,11 +122,15 @@ async function rebuildFromBlobs(): Promise<{ added: number; total: number; scann
   // capture all ~1100+ NSIB files, not just the first page.
   const allBlobs: { pathname: string; url: string }[] = [];
   let cursor: string | undefined = undefined;
-  do {
-    const page = await list(cursor ? { cursor } : undefined);
-    allBlobs.push(...page.blobs.map(b => ({ pathname: b.pathname, url: b.url })));
+  let hasMore = true;
+  while (hasMore) {
+    const page: Awaited<ReturnType<typeof list>> = await list({ cursor, limit: 1000 });
+    for (const b of page.blobs) {
+      allBlobs.push({ pathname: b.pathname, url: b.url });
+    }
     cursor = page.cursor;
-  } while (cursor);
+    hasMore = page.hasMore;
+  }
 
   const newest = new Map<string, ParsedBlob>();
   let scanned = 0;
