@@ -118,12 +118,20 @@ function parseBlobName(pathname: string, url: string): ParsedBlob | null {
 // (so editable Version-2 records and their data are not clobbered).
 // ---------------------------------------------------------------------------
 async function rebuildFromBlobs(): Promise<{ added: number; total: number; scanned: number }> {
-  const { blobs } = await list();
+  // list() returns at most 1000 blobs per page — paginate via cursor so we
+  // capture all ~1100+ NSIB files, not just the first page.
+  const allBlobs: { pathname: string; url: string }[] = [];
+  let cursor: string | undefined = undefined;
+  do {
+    const page = await list(cursor ? { cursor } : undefined);
+    allBlobs.push(...page.blobs.map(b => ({ pathname: b.pathname, url: b.url })));
+    cursor = page.cursor;
+  } while (cursor);
 
   const newest = new Map<string, ParsedBlob>();
   let scanned = 0;
 
-  for (const blob of blobs) {
+  for (const blob of allBlobs) {
     const parsed = parseBlobName(blob.pathname, blob.url);
     if (!parsed) continue;
     scanned++;
@@ -154,7 +162,26 @@ async function rebuildFromBlobs(): Promise<{ added: number; total: number; scann
       date: existing?.date || new Date().toISOString(),
       vehicle: existing?.vehicle || parsed.vehicle,
       customer: existing?.customer || parsed.customer,
-      quotes: existing?.quotes || [],
+      enquiryNumber: existing?.enquiryNumber || '',
+      // The per-quote premium/coverage data lived only in the lost JSON and
+      // cannot be recovered from the HTML filename. We supply one placeholder
+      // quote so the card renders and stays clickable; the full document is
+      // viewable via fileUrl. customerName/enquiryNumber are mirrored inside
+      // the quote because the dashboard reads them from quotes[0].
+      quotes: (existing && Array.isArray(existing.quotes) && existing.quotes.length > 0)
+        ? existing.quotes
+        : [{
+            id: `rec_${ref}`,
+            company: 'View document for full details',
+            customerName: parsed.customer,
+            enquiryNumber: '',
+            make: parsed.vehicle.split(' ')[0] || '',
+            model: parsed.vehicle.split(' ').slice(1).join(' ') || '',
+            premium: 0,
+            vat: 0,
+            total: 0,
+            recovered: true,
+          }],
       referenceNumber: ref,
       fileUrl: parsed.fileUrl,
       createdBy: existing?.createdBy || 'Recovered',
