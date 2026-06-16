@@ -3,8 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const HISTORY_FILE = 'quotes-history-shared.json';
 
+interface SavedComparison {
+  id: string;
+  date: string;
+  vehicle: string;
+  quotes: unknown[];
+  referenceNumber: string;
+  fileUrl?: string;
+  createdBy?: string;
+}
+
 // Helper to get the current history
-async function getHistory(): Promise<any[]> {
+async function getHistory(): Promise<SavedComparison[]> {
   try {
     const { blobs } = await list({ prefix: HISTORY_FILE });
     if (blobs.length === 0) return [];
@@ -13,13 +23,12 @@ async function getHistory(): Promise<any[]> {
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch {
-    // Error fetching history, return empty array
     return [];
   }
 }
 
 // Helper to save history
-async function saveHistory(history: any[]): Promise<string> {
+async function saveHistory(history: SavedComparison[]): Promise<string> {
   const blob = await put(HISTORY_FILE, JSON.stringify(history), {
     access: 'public',
     addRandomSuffix: false,
@@ -38,7 +47,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { item } = await request.json();
+    const { item } = await request.json() as { item: SavedComparison };
     
     if (!item || !item.referenceNumber) {
       return NextResponse.json({ success: false, error: 'Invalid item - missing referenceNumber' }, { status: 400 });
@@ -46,9 +55,9 @@ export async function POST(request: NextRequest) {
     
     const history = await getHistory();
     
-    // CRITICAL FIX: Find existing entry by REFERENCE NUMBER (most reliable identifier)
+    // CRITICAL FIX: Find existing entry by REFERENCE NUMBER
     const existingIndex = history.findIndex(
-      (h: any) => h.referenceNumber === item.referenceNumber
+      (h: SavedComparison) => h.referenceNumber === item.referenceNumber
     );
     
     if (existingIndex !== -1) {
@@ -84,9 +93,9 @@ export async function DELETE(request: NextRequest) {
     
     // Delete by ID or reference number
     if (refNum) {
-      history = history.filter((h: any) => h.referenceNumber !== refNum);
+      history = history.filter((h: SavedComparison) => h.referenceNumber !== refNum);
     } else {
-      history = history.filter((h: any) => h.id !== id);
+      history = history.filter((h: SavedComparison) => h.id !== id);
     }
     
     await saveHistory(history);
