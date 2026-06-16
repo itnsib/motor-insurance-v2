@@ -40,6 +40,8 @@ async function saveHistory(history: SavedComparison[]): Promise<string> {
   const blob = await put(HISTORY_FILE, JSON.stringify(history), {
     access: 'public',
     addRandomSuffix: false,
+    allowOverwrite: true, // required: the file already exists, so overwrite it
+    cacheControlMaxAge: 60, // short cache so refreshes show new data quickly
   });
   return blob.url;
 }
@@ -199,8 +201,15 @@ export async function POST(request: NextRequest) {
 
     // ---- One-time recovery action: POST /api/history?rebuild=true ----
     if (searchParams.get('rebuild') === 'true') {
-      const result = await rebuildFromBlobs();
-      return NextResponse.json({ success: true, ...result });
+      try {
+        const result = await rebuildFromBlobs();
+        return NextResponse.json({ success: true, ...result });
+      } catch (err) {
+        return NextResponse.json(
+          { success: false, error: 'Rebuild failed', detail: String(err) },
+          { status: 500 },
+        );
+      }
     }
 
     const { item } = await request.json() as { item: SavedComparison };
@@ -223,8 +232,8 @@ export async function POST(request: NextRequest) {
 
     await saveHistory(history);
     return NextResponse.json({ success: true, updated: existingIndex !== -1 });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to save' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: 'Failed to save', detail: String(err) }, { status: 500 });
   }
 }
 
@@ -247,7 +256,7 @@ export async function DELETE(request: NextRequest) {
 
     await saveHistory(history);
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to delete' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: 'Failed to delete', detail: String(err) }, { status: 500 });
   }
 }
