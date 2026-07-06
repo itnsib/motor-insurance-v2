@@ -87,7 +87,7 @@ const VEHICLE_MAKES = [
   'Fiat', 'Ford', 'Foton', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
   'Hino 300', 'Honda', 'Hongqi', 'Hummer', 'Hyundai', 'Infiniti', 'Isuzu', 'JAC Motors',
   'Jaguar', 'Jeep', 'Jetour', 'Kia',  'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
-  'Lotus', 'Maserati', 'Mazda', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
+  'Lotus', 'Maserati', 'Mazda', 'Maxus V90', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
   'Nio', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'RAM', 'Renault', 'Rolls-Royce',
   'Saab', 'Seat', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki', 'Tesla', 'Tata',
   'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'Zeekr', 'King Long(Bus)', 'King Long(Van)', 'Ashok Leyland (BUS)', 'Ashok Leyland (Pickup)'
