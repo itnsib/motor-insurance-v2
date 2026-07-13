@@ -1,7 +1,19 @@
-import { put, list } from '@vercel/blob';
+import { put, list, del } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 
-const HISTORY_FILE = 'quotes-history-shared.json';
+// Every save writes a NEW pathname (quotes-history-shared-<suffix>.json) and
+// reads pick the newest one. A fixed pathname cannot work: blob URLs are served
+// through a CDN that ignores query strings when computing the cache key and
+// holds objects long past their max-age, and each region caches independently.
+// That meant a function could read back a stale copy of the file it had just
+// written - saves landed in storage but never appeared in Saved History. A
+// unique pathname per version has never been cached, so it always reads fresh.
+const HISTORY_PREFIX = 'quotes-history-shared';
+const HISTORY_FILE = `${HISTORY_PREFIX}.json`;
+
+// Older versions to retain. They are effectively free rolling backups of a file
+// that is otherwise overwritten in place on every save.
+const VERSIONS_TO_KEEP = 5;
 
 // A single quote inside a comparison. Kept loose but typed (no `any`) because
 // recovered records only carry a subset of these fields.
@@ -40,15 +52,20 @@ interface SavedComparison {
 // read failure would overwrite the entire shared history with a single record.
 // An empty result is only ever legitimate when no history blob exists at all.
 // ---------------------------------------------------------------------------
-async function getHistory(): Promise<SavedComparison[]> {
-  const { blobs } = await list({ prefix: HISTORY_FILE });
-  if (blobs.length === 0) return [];
+// Newest first. Includes the legacy fixed-pathname blob, which sorts in by
+// uploadedAt like any other version and is read from until the first new save.
+async function listHistoryVersions() {
+  const { blobs } = await list({ prefix: HISTORY_PREFIX });
+  return blobs
+    .filter((b) => b.pathname.endsWith('.json'))
+    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+}
 
-  // The blob is served through the CDN, so the plain URL can hand back a stale
-  // copy of the file we just wrote - `cache: 'no-store'` only governs Next's
-  // own data cache, not the CDN. A unique query string forces a fresh read.
-  const url = `${blobs[0].url}?ts=${Date.now()}`;
-  const response = await fetch(url, { cache: 'no-store' });
+async function getHistory(): Promise<SavedComparison[]> {
+  const versions = await listHistoryVersions();
+  if (versions.length === 0) return [];
+
+  const response = await fetch(versions[0].url, { cache: 'no-store' });
 
   if (!response.ok) {
     throw new Error(`Failed to read history blob: HTTP ${response.status}`);
@@ -64,17 +81,29 @@ async function getHistory(): Promise<SavedComparison[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Save history. allowOverwrite is REQUIRED because the file already exists —
-// without it the put() throws and the save silently fails.
+// Save history to a NEW pathname every time, then prune old versions. Writing
+// to a fresh URL is what guarantees the next read is not served from a stale
+// CDN copy; see the note on HISTORY_PREFIX.
 // ---------------------------------------------------------------------------
 async function saveHistory(history: SavedComparison[]): Promise<string> {
   const blob = await put(HISTORY_FILE, JSON.stringify(history), {
     access: 'public',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    // Mutable state - never let the CDN hold a copy of it.
+    addRandomSuffix: true,
     cacheControlMaxAge: 0,
   });
+
+  // Prune only AFTER the new version is durably written, so a failure here
+  // never leaves the history without a readable copy.
+  try {
+    const versions = await listHistoryVersions();
+    const stale = versions.filter((v) => v.url !== blob.url).slice(VERSIONS_TO_KEEP);
+    if (stale.length > 0) {
+      await del(stale.map((v) => v.url));
+    }
+  } catch (err) {
+    console.error('History version prune failed (non-fatal):', err);
+  }
+
   return blob.url;
 }
 
