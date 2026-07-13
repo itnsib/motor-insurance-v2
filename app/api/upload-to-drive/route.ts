@@ -12,10 +12,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Upload to Vercel Blob Storage
+    // allowOverwrite is required: the filename is derived from the reference
+    // number, so re-saving an edited comparison targets an existing pathname
+    // and put() would otherwise throw.
     const blob = await put(fileName, htmlContent, {
       access: 'public',
       contentType: 'text/html',
+      allowOverwrite: true,
     });
 
     return NextResponse.json({

@@ -309,6 +309,32 @@ const calculateVAT = (premium: number): { vat: number; total: number } => {
   return { vat, total };
 };
 
+// The browser cache is a convenience only; the cloud history is the source of
+// truth. Capped because localStorage tops out around 5MB and the full shared
+// history is far larger than that - an over-quota setItem throws and would
+// otherwise abort the caller mid-save.
+const LOCAL_CACHE_LIMIT = 50;
+
+const cacheComparisonLocally = (item: SavedComparison): void => {
+  try {
+    const cached: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
+    const existingIndex = cached.findIndex((h: SavedComparison) => h.referenceNumber === item.referenceNumber);
+
+    if (existingIndex !== -1) {
+      if (!item.fileUrl && cached[existingIndex].fileUrl) {
+        item.fileUrl = cached[existingIndex].fileUrl;
+      }
+      cached[existingIndex] = item;
+    } else {
+      cached.unshift(item);
+    }
+
+    localStorage.setItem('quotesHistory', JSON.stringify(cached.slice(0, LOCAL_CACHE_LIMIT)));
+  } catch (error) {
+    console.warn('Local cache write skipped:', error);
+  }
+};
+
 const generateReferenceNumber = (): string => {
   const timestamp = Date.now();
   const last4 = timestamp.toString().slice(-4);
@@ -599,46 +625,37 @@ export default function App() {
     );
   };
 
-  // FIXED: Auto-save function that properly updates existing comparison
+  // Auto-save. The cloud write runs FIRST and is never gated behind the
+  // localStorage write, which can throw once the cached history exceeds quota.
   const autoSaveQuotes = useCallback(async (updatedQuotes: Quote[], refNum: string, compId: string) => {
     if (updatedQuotes.length === 0) return;
-    
+
+    const comparisonData: SavedComparison = {
+      id: compId,
+      date: new Date().toISOString(),
+      vehicle: updatedQuotes[0].make + ' ' + updatedQuotes[0].model,
+      quotes: updatedQuotes,
+      referenceNumber: refNum,
+      createdBy: getCurrentUserName(),
+    };
+
     try {
-      const comparisonData: SavedComparison = {
-        id: compId,
-        date: new Date().toISOString(),
-        vehicle: updatedQuotes[0].make + ' ' + updatedQuotes[0].model,
-        quotes: updatedQuotes,
-        referenceNumber: refNum,
-        createdBy: getCurrentUserName(),
-      };
-      
-      // Save to localStorage - find by REFERENCE NUMBER (most reliable)
-      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === refNum);
-      
-      if (existingIndex !== -1) {
-        // UPDATE existing entry - keep the file URL if it exists
-        comparisonData.fileUrl = savedHistory[existingIndex].fileUrl;
-        savedHistory[existingIndex] = comparisonData;
-        console.log('Auto-save: Updated existing comparison at index', existingIndex);
-      } else {
-        // ADD new entry at the beginning
-        savedHistory.unshift(comparisonData);
-        console.log('Auto-save: Added new comparison');
-      }
-      localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
-      
-      // Save to cloud in background (non-blocking)
-      fetch('/api/history', {
+      const response = await fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item: comparisonData }),
-      }).catch(err => console.error('Auto-save to cloud failed:', err));
-      
+      });
+
+      // fetch() resolves on 4xx/5xx, so the status has to be checked explicitly.
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ': ' + (await response.text()));
+      }
     } catch (error) {
-      console.error('Auto-save error:', error);
+      console.error('Auto-save to cloud failed:', error);
+      alert('WARNING: Ref ' + refNum + ' did NOT save to the cloud. Use "Save & Download" to retry.');
     }
+
+    cacheComparisonLocally(comparisonData);
   }, []);
 
   const addQuote = () => {
@@ -779,8 +796,13 @@ export default function App() {
     // Download locally first
     downloadHTMLFile(htmlContent, fileName);
     
+    // The document upload and the history record are independent. A failed
+    // upload must not stop the comparison from being recorded, and neither may
+    // depend on localStorage, which throws once the cache is over quota.
+    let fileUrl: string | undefined;
+    let uploadError = '';
+
     try {
-      // Upload to Vercel Blob Storage
       const response = await fetch('/api/upload-to-drive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -788,8 +810,7 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error('HTTP ' + response.status + ': ' + errorText);
+        throw new Error('HTTP ' + response.status + ': ' + (await response.text()));
       }
 
       const result = await response.json();
@@ -797,65 +818,61 @@ export default function App() {
       if (!result.success) {
         throw new Error(result.error || 'Upload failed');
       }
-      
-      // Save to localStorage - UPDATE existing by reference number
-      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === referenceNumber);
-      
-      const comparisonData: SavedComparison = {
-        id: comparisonId,
-        date: new Date().toISOString(),
-        vehicle: quotes[0].make + ' ' + quotes[0].model,
-        quotes: quotes,
-        referenceNumber: referenceNumber,
-        fileUrl: result.url,
-        createdBy: getCurrentUserName(),
-      };
-      
-      if (existingIndex !== -1) {
-        // Update existing
-        savedHistory[existingIndex] = comparisonData;
-        console.log('Save: Updated existing at index', existingIndex);
-      } else {
-        // Add new
-        savedHistory.unshift(comparisonData);
-        console.log('Save: Added new');
-      }
-      localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
 
-      // Save to cloud
-      await fetch('/api/history', {
+      fileUrl = result.url;
+    } catch (error) {
+      console.error('Document upload failed:', error);
+      uploadError = error instanceof Error ? error.message : String(error);
+    }
+
+    const comparisonData: SavedComparison = {
+      id: comparisonId,
+      date: new Date().toISOString(),
+      vehicle: quotes[0].make + ' ' + quotes[0].model,
+      quotes: quotes,
+      referenceNumber: referenceNumber,
+      fileUrl: fileUrl,
+      createdBy: getCurrentUserName(),
+    };
+
+    let historyError = '';
+
+    try {
+      const response = await fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item: comparisonData }),
       });
-      
-      alert('Saved! Ref: ' + referenceNumber + '\nFile: ' + fileName);
-      
-    } catch (error) {
-      console.error('Upload error:', error);
-      
-      // Still save to history without URL
-      const savedHistory: SavedComparison[] = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
-      const existingIndex = savedHistory.findIndex((h: SavedComparison) => h.referenceNumber === referenceNumber);
-      
-      const comparisonData: SavedComparison = {
-        id: comparisonId,
-        date: new Date().toISOString(),
-        vehicle: quotes[0].make + ' ' + quotes[0].model,
-        quotes: quotes,
-        referenceNumber: referenceNumber,
-        createdBy: getCurrentUserName(),
-      };
-      
-      if (existingIndex !== -1) {
-        savedHistory[existingIndex] = comparisonData;
-      } else {
-        savedHistory.unshift(comparisonData);
+
+      // fetch() resolves on 4xx/5xx, so the status has to be checked explicitly.
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ': ' + (await response.text()));
       }
-      localStorage.setItem('quotesHistory', JSON.stringify(savedHistory));
-      
-      alert('File downloaded. Cloud upload failed.\nRef: ' + referenceNumber);
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Save failed');
+      }
+    } catch (error) {
+      console.error('History save failed:', error);
+      historyError = error instanceof Error ? error.message : String(error);
+    }
+
+    cacheComparisonLocally(comparisonData);
+
+    if (historyError) {
+      alert(
+        'SAVE FAILED - Ref ' + referenceNumber + ' is NOT in the shared history.\n' +
+        historyError + '\n\nThe file was downloaded to your computer. Please retry.'
+      );
+    } else if (uploadError) {
+      alert(
+        'Saved to history! Ref: ' + referenceNumber + '\n\n' +
+        'The document upload failed, so "View" will be unavailable for this record.\n' + uploadError
+      );
+    } else {
+      alert('Saved! Ref: ' + referenceNumber + '\nFile: ' + fileName);
     }
   };
 
@@ -1726,7 +1743,17 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
       
       if (result.success && result.history && result.history.length > 0) {
         setHistory(result.history);
-        localStorage.setItem('quotesHistory', JSON.stringify(result.history));
+        // Cache only a recent slice. Mirroring the whole shared history here is
+        // what pushed localStorage past its ~5MB quota, which made every
+        // subsequent setItem throw and silently killed saving.
+        try {
+          localStorage.setItem(
+            'quotesHistory',
+            JSON.stringify(result.history.slice(0, LOCAL_CACHE_LIMIT))
+          );
+        } catch (error) {
+          console.warn('Local cache write skipped:', error);
+        }
       } else {
         const localHistory = JSON.parse(localStorage.getItem('quotesHistory') || '[]');
         setHistory(localHistory);
@@ -1744,12 +1771,20 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     if (!confirm('Delete this comparison?')) return;
     
     try {
-      await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ': ' + (await response.text()));
+      }
       const updated = history.filter(h => h.id !== id);
       setHistory(updated);
-      localStorage.setItem('quotesHistory', JSON.stringify(updated));
+      try {
+        localStorage.setItem('quotesHistory', JSON.stringify(updated.slice(0, LOCAL_CACHE_LIMIT)));
+      } catch (error) {
+        console.warn('Local cache write skipped:', error);
+      }
     } catch (error) {
       console.error('Error deleting:', error);
+      alert('Delete failed. The record is still in the shared history.');
     }
   };
 
