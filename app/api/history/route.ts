@@ -33,20 +33,34 @@ interface SavedComparison {
 }
 
 // ---------------------------------------------------------------------------
-// Read the current shared history JSON. Uses prefix match (same approach as the
-// original working route) and reads the matching blob.
+// Read the current shared history JSON.
+//
+// This MUST throw rather than return [] when the blob exists but cannot be
+// read. Callers write back whatever this returns, so a silent [] on a transient
+// read failure would overwrite the entire shared history with a single record.
+// An empty result is only ever legitimate when no history blob exists at all.
 // ---------------------------------------------------------------------------
 async function getHistory(): Promise<SavedComparison[]> {
-  try {
-    const { blobs } = await list({ prefix: HISTORY_FILE });
-    if (blobs.length === 0) return [];
+  const { blobs } = await list({ prefix: HISTORY_FILE });
+  if (blobs.length === 0) return [];
 
-    const response = await fetch(blobs[0].url, { cache: 'no-store' });
-    const data: unknown = await response.json();
-    return Array.isArray(data) ? (data as SavedComparison[]) : [];
-  } catch {
-    return [];
+  // The blob is served through the CDN, so the plain URL can hand back a stale
+  // copy of the file we just wrote - `cache: 'no-store'` only governs Next's
+  // own data cache, not the CDN. A unique query string forces a fresh read.
+  const url = `${blobs[0].url}?ts=${Date.now()}`;
+  const response = await fetch(url, { cache: 'no-store' });
+
+  if (!response.ok) {
+    throw new Error(`Failed to read history blob: HTTP ${response.status}`);
   }
+
+  const data: unknown = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error('History blob is not an array; refusing to overwrite it');
+  }
+
+  return data as SavedComparison[];
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +72,8 @@ async function saveHistory(history: SavedComparison[]): Promise<string> {
     access: 'public',
     addRandomSuffix: false,
     allowOverwrite: true,
-    cacheControlMaxAge: 60,
+    // Mutable state - never let the CDN hold a copy of it.
+    cacheControlMaxAge: 0,
   });
   return blob.url;
 }
