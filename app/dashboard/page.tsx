@@ -87,7 +87,7 @@ const VEHICLE_MAKES = [
   'Fiat', 'Ford', 'Foton', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
   'Hino 300', 'Honda', 'Hongqi', 'Hummer', 'Hyundai', 'Infiniti', 'Isuzu', 'JAC Motors',
   'Jaguar', 'Jeep', 'Jetour', 'Kia',  'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln',
-  'Lotus', 'Maserati', 'Mazda', 'Maxus V90', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
+  'Lotus', 'Maserati', 'Mazda', 'Maxus V90', 'Maxus V80', 'McLaren', 'Mercedes-Benz', 'MG', 'Mini', 'Mitsubishi',
   'Nio', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'RAM', 'Renault', 'Rolls-Royce',
   'Saab', 'Seat', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki', 'Tesla', 'Tata',
   'Toyota', 'Volkswagen', 'Volvo', 'Wey', 'Zeekr', 'King Long(Bus)', 'King Long(Van)', 'Ashok Leyland (BUS)', 'Ashok Leyland (Pickup)'
@@ -108,7 +108,7 @@ const PRIVATE_INSURANCE_COMPANIES = [
 
 const COMMERCIAL_INSURANCE_COMPANIES = [
   'SUKOON', 'ADAMJEE', 'METHAQ (ind. pickup)', 'NEW INDIA ABU DHABI',
-  'DNIRC', 'NIA DXB','INSURANCE HOUSE', 'AL SAGR', 'EMIRATES', 'AL ITTIHAD AL WATANI', 'NGI'
+  'DNIRC', 'NIA DXB','INSURANCE HOUSE', 'AL SAGR', 'AL BUHAIRA', 'EMIRATES', 'AL ITTIHAD AL WATANI', 'NGI'
 ];
 
 const COMPANY_PRODUCT_TYPES: Record<string, string[]> = {
