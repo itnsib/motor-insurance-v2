@@ -81,7 +81,7 @@ const COMPANY_LOGOS: Record<string, string> = {
 
 // ============ CONSTANTS FROM GOOGLE SHEETS ============
 const VEHICLE_MAKES = [
-  'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi', 'BAIC Motor', 'Bentley', 'Bestune', 'BMW',
+  'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi', 'Avatr', 'BAIC Motor', 'Bentley', 'Bestune', 'BMW',
   'Bugatti', 'Buick', 'BYD', 'Cadillac', 'Changan', 'Chery', 'Chevrolet', 'Chrysler',
   'Citroën', 'CMC', 'Dacia', 'Daewoo', 'Daihatsu', 'Deepal', 'Dodge', 'Dongfeng' , 'DFSK' , 'Ducati', 'Exeed', 'Ferrari',
   'Fiat', 'Ford', 'Foton', 'Force - Urbania(Mini Bus)', 'GAC Motor', 'Geely', 'Genesis', 'GMC', 'Great Wall', 'Haval', 'Higer',
