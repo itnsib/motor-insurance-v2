@@ -5,39 +5,42 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  --nsib-red: #c0122b;
+  --nsib-red-dark: #8a0e20;
+  --nsib-gold: #d9a441;
+  --nsib-cream: #faf6ed;
+  --nsib-sand: #f0e4cc;
+  --nsib-ink: #2b2118;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
+  color: var(--nsib-ink);
+  background: var(--nsib-cream);
 }
 
-/* Custom scrollbar */
+/* Brand scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+  background: var(--nsib-cream);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 3px;
+  background: var(--nsib-sand);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
+  background: var(--nsib-gold);
+}
+
+/* Native controls follow the brand rather than the browser default blue */
+input,
+select,
+textarea {
+  accent-color: var(--nsib-red);
 }

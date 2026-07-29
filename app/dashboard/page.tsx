@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import AppShell, { AppView } from '@/components/AppShell';
 
 // ============ TYPES ============
 interface Quote {
@@ -547,7 +548,7 @@ function downloadHTMLFile(htmlContent: string, fileName: string) {
 
 // ============ MAIN APP ============
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'generator' | 'history'>('generator');
+  const [currentPage, setCurrentPage] = useState<AppView>('dashboard');
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [businessType, setBusinessType] = useState<'Private' | 'Commercial'>('Private');
   
@@ -962,36 +963,33 @@ export default function App() {
   const sortedQuotes = [...quotes].sort((a, b) => a.total - b.total);
   const allCoverageOptions: string[] = Array.from(new Set(quotes.flatMap((q: Quote) => q.coverageOptions)));
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-5">
-      <div className="max-w-[1800px] mx-auto">
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">NSIB Insurance Quote System</h1>
-          {/* Show current reference number when editing */}
-          {currentReferenceNumber && (
-            <div className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-mono text-sm mb-2">
-              Editing: Ref {currentReferenceNumber} ({quotes.length} quotes)
-            </div>
-          )}
-          
-          <div className="flex justify-center gap-4 mt-2">
-            <button 
-              onClick={() => setCurrentPage('generator')} 
-              className={`px-8 py-3 rounded-lg font-bold transition ${currentPage === 'generator' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-            >
-              Quote Generator
-            </button>
-            <button 
-              onClick={() => setCurrentPage('history')} 
-              className={`px-8 py-3 rounded-lg font-bold transition ${currentPage === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-            >
-              Saved History
-            </button>
-          </div>
-        </div>
+  const viewMeta: Record<AppView, { title: string; subtitle: string }> = {
+    dashboard: { title: 'Dashboard', subtitle: 'NSIB Motor Comparison' },
+    generator: { title: 'Create Comparison', subtitle: 'Build and edit a motor quote comparison' },
+    history: { title: 'Saved History', subtitle: 'Every saved comparison' },
+  };
 
-        {currentPage === 'generator' ? (
-          <QuoteGeneratorPage 
+  return (
+    <AppShell
+      active={currentPage}
+      onNavigate={setCurrentPage}
+      title={viewMeta[currentPage].title}
+      subtitle={viewMeta[currentPage].subtitle}
+      headerExtra={
+        currentReferenceNumber && currentPage === 'generator' ? (
+          <div className="hidden md:block bg-white/15 border border-white/25 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0">
+            Editing Ref {currentReferenceNumber} · {quotes.length} quote{quotes.length !== 1 ? 's' : ''}
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="max-w-[1800px] mx-auto">
+        {currentPage === 'dashboard' && (
+          <DashboardHome onNavigate={setCurrentPage} />
+        )}
+
+        {currentPage === 'generator' && (
+          <QuoteGeneratorPage
             quotes={quotes}
             businessType={businessType}
             setBusinessType={setBusinessType}
@@ -1023,9 +1021,182 @@ export default function App() {
             allCoverageOptions={allCoverageOptions}
             currentReferenceNumber={currentReferenceNumber}
           />
-        ) : (
+        )}
+
+        {currentPage === 'history' && (
           <SavedHistoryPage loadComparison={loadComparison} />
         )}
+      </div>
+    </AppShell>
+  );
+}
+
+// ============ DASHBOARD HOME ============
+function DashboardHome({ onNavigate }: { onNavigate: (view: AppView) => void }) {
+  const [history, setHistory] = useState<SavedComparison[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/history?t=' + Date.now())
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled && data?.success) setHistory(data.history || []);
+      })
+      .catch(error => console.error('Error loading history:', error))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = now.toDateString();
+
+    let thisMonth = 0;
+    let todayCount = 0;
+    let quoteCount = 0;
+    const insurers = new Map<string, number>();
+
+    history.forEach(comparison => {
+      const date = new Date(comparison.date);
+      if (!isNaN(date.getTime())) {
+        if (date >= monthStart) thisMonth++;
+        if (date.toDateString() === today) todayCount++;
+      }
+      comparison.quotes?.forEach(quote => {
+        quoteCount++;
+        if (quote.company) insurers.set(quote.company, (insurers.get(quote.company) || 0) + 1);
+      });
+    });
+
+    const topInsurers = Array.from(insurers.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+
+    return { total: history.length, thisMonth, today: todayCount, quoteCount, topInsurers };
+  }, [history]);
+
+  const recent = history.slice(0, 5);
+  const maxInsurerCount = stats.topInsurers[0]?.[1] || 1;
+
+  const cards = [
+    { label: 'Total Comparisons', value: stats.total, accent: 'bg-nsib-red' },
+    { label: 'This Month', value: stats.thisMonth, accent: 'bg-nsib-gold' },
+    { label: "Today's Comparisons", value: stats.today, accent: 'bg-nsib-red' },
+    { label: 'Quotes Compared', value: stats.quoteCount, accent: 'bg-nsib-gold' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map(card => (
+          <div
+            key={card.label}
+            className="bg-white rounded-2xl border border-nsib-sand shadow-card overflow-hidden"
+          >
+            <div className="p-5">
+              <div className="text-3xl font-bold text-nsib-ink">{loading ? '—' : card.value}</div>
+              <div className="text-sm text-nsib-muted mt-1">{card.label}</div>
+            </div>
+            <div className={`h-1 ${card.accent}`} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Recent comparisons */}
+        <div className="bg-white rounded-2xl border border-nsib-sand shadow-card flex flex-col">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-nsib-sand">
+            <span className="w-9 h-9 rounded-xl bg-nsib-red text-white flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2a2 2 0 0 1 1.6.8l.9 1.2h7.3A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z" />
+              </svg>
+            </span>
+            <h3 className="text-lg font-bold text-nsib-red">Recent Comparisons</h3>
+          </div>
+
+          <div className="p-4 space-y-2 flex-1">
+            {loading ? (
+              <div className="text-center text-nsib-muted py-10">Loading...</div>
+            ) : recent.length === 0 ? (
+              <div className="text-center text-nsib-muted py-10">No comparisons yet</div>
+            ) : (
+              recent.map(comparison => (
+                <div
+                  key={comparison.id}
+                  className="flex items-center justify-between gap-3 bg-nsib-cream/60 hover:bg-nsib-gold-soft rounded-xl px-4 py-3 transition"
+                >
+                  <div className="min-w-0">
+                    <div className="font-semibold text-nsib-ink truncate">{comparison.vehicle}</div>
+                    <div className="text-xs text-nsib-muted">
+                      Ref: {comparison.referenceNumber} • {new Date(comparison.date).toLocaleString('en-US', {
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                  <span className="shrink-0 bg-nsib-gold-soft text-nsib-gold-dark border border-nsib-gold/30 px-2.5 py-1 rounded-lg text-xs font-semibold">
+                    {comparison.quotes?.length || 0} quotes
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
+            onClick={() => onNavigate('history')}
+            className="border-t border-nsib-sand py-3.5 text-sm font-bold text-nsib-red hover:bg-nsib-red-soft transition rounded-b-2xl"
+          >
+            View All Comparisons →
+          </button>
+        </div>
+
+        {/* Most quoted insurers */}
+        <div className="bg-white rounded-2xl border border-nsib-sand shadow-card flex flex-col">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-nsib-sand">
+            <span className="w-9 h-9 rounded-xl bg-nsib-gold text-nsib-red-dark flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 19V10M10 19V5M16 19v-6M22 19H2" strokeLinecap="round" />
+              </svg>
+            </span>
+            <h3 className="text-lg font-bold text-nsib-red">Most Quoted Insurers</h3>
+          </div>
+
+          <div className="p-5 space-y-3 flex-1">
+            {loading ? (
+              <div className="text-center text-nsib-muted py-10">Loading...</div>
+            ) : stats.topInsurers.length === 0 ? (
+              <div className="text-center text-nsib-muted py-10">No quotes yet</div>
+            ) : (
+              stats.topInsurers.map(([company, count]) => (
+                <div key={company}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-semibold text-nsib-ink truncate">{company}</span>
+                    <span className="text-nsib-muted shrink-0 ml-2">{count}</span>
+                  </div>
+                  <div className="h-2 bg-nsib-cream rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-nsib-red to-nsib-gold rounded-full"
+                      style={{ width: `${Math.max(6, (count / maxInsurerCount) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
+            onClick={() => onNavigate('generator')}
+            className="border-t border-nsib-sand py-3.5 text-sm font-bold text-nsib-red hover:bg-nsib-red-soft transition rounded-b-2xl"
+          >
+            + Create New Comparison
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1083,6 +1254,13 @@ interface QuoteGeneratorPageProps {
 }
 
 // ============ QUOTE GENERATOR PAGE ============
+// Shared control styling, so every field in the form and in the live table reads
+// as one set rather than a pile of one-off class strings.
+const FIELD = 'w-full px-3 py-2.5 border border-nsib-sand rounded-lg text-sm text-nsib-ink bg-white focus:border-nsib-red focus:outline-none transition';
+const LABEL = 'block text-xs font-bold mb-1.5 text-nsib-ink';
+const CELL_FIELD = 'w-full p-1 border border-nsib-sand rounded text-xs text-nsib-ink bg-white focus:border-nsib-red focus:outline-none';
+const PANEL = 'bg-white rounded-2xl border border-nsib-sand shadow-card';
+
 function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
   const {
     quotes,
@@ -1117,24 +1295,24 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
   } = props;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[450px_1fr] gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* LEFT PANEL - FORM */}
-      <div className="bg-white rounded-xl p-5 shadow-2xl max-h-[calc(100vh-150px)] overflow-y-auto">
-        <h2 className="text-xl font-bold text-center mb-5 text-gray-800">Add Quote</h2>
+      <div className={`${PANEL} p-5 max-h-[calc(100vh-160px)] overflow-y-auto`}>
+        <h2 className="text-lg font-bold mb-5 text-nsib-red">Add Quote</h2>
 
         {/* Business Type */}
-        <div className="bg-indigo-50 p-4 rounded-lg mb-4 border-2 border-indigo-200">
-          <label className="block text-sm font-bold mb-2 text-gray-800">Business Type *</label>
+        <div className="bg-nsib-gold-soft p-4 rounded-xl mb-4 border border-nsib-gold/30">
+          <label className="block text-sm font-bold mb-2 text-nsib-ink">Business Type *</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setBusinessType('Private')}
-              className={`p-3 rounded-lg font-bold transition ${businessType === 'Private' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border-2 border-gray-300'}`}
+              className={`p-3 rounded-lg font-bold transition ${businessType === 'Private' ? 'bg-nsib-red text-white shadow-card' : 'bg-white text-nsib-muted border border-nsib-sand hover:border-nsib-red'}`}
             >
               Private
             </button>
             <button
               onClick={() => setBusinessType('Commercial')}
-              className={`p-3 rounded-lg font-bold transition ${businessType === 'Commercial' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border-2 border-gray-300'}`}
+              className={`p-3 rounded-lg font-bold transition ${businessType === 'Commercial' ? 'bg-nsib-red text-white shadow-card' : 'bg-white text-nsib-muted border border-nsib-sand hover:border-nsib-red'}`}
             >
               Commercial
             </button>
@@ -1142,35 +1320,36 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
         </div>
 
         {/* Vehicle Information */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <h3 className="font-bold text-sm mb-3 text-gray-800">Vehicle Information</h3>
+        <div className="bg-nsib-cream/70 border border-nsib-sand p-4 rounded-xl mb-4">
+          <h3 className="font-bold text-sm mb-3 text-nsib-red uppercase tracking-wide">Vehicle Information</h3>
           
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Enquiry Number *</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded text-sm text-gray-900 bg-white"
-              placeholder="Enter enquiry number"
-              value={formData.enquiryNumber}
-              onChange={(e) => setFormData({ ...formData, enquiryNumber: e.target.value })}
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Customer Name *</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded text-sm text-gray-900 bg-white"
-              placeholder="Enter customer name"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className={LABEL}>Enquiry Number *</label>
+              <input
+                type="text"
+                className={FIELD}
+                placeholder="Enter enquiry number"
+                value={formData.enquiryNumber}
+                onChange={(e) => setFormData({ ...formData, enquiryNumber: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Customer Name *</label>
+              <input
+                type="text"
+                className={FIELD}
+                placeholder="Enter customer name"
+                value={formData.customerName}
+                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Vehicle Make *</label>
-              <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={formData.vehicleMake} onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}>
+              <label className={LABEL}>Vehicle Make *</label>
+              <select className={FIELD} value={formData.vehicleMake} onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}>
                 <option value="">Select Make</option>
                 {VEHICLE_MAKES.map(make => (
                   <option key={make} value={make}>{make}</option>
@@ -1178,15 +1357,15 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Vehicle Model *</label>
-              <input type="text" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="e.g., Camry" value={formData.vehicleModel} onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })} />
+              <label className={LABEL}>Vehicle Model *</label>
+              <input type="text" className={FIELD} placeholder="e.g., Camry" value={formData.vehicleModel} onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Year Model</label>
-              <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={formData.yearModel} onChange={(e) => setFormData({ ...formData, yearModel: e.target.value })}>
+              <label className={LABEL}>Year Model</label>
+              <select className={FIELD} value={formData.yearModel} onChange={(e) => setFormData({ ...formData, yearModel: e.target.value })}>
                 <option value="">Select Year</option>
                 {YEARS.map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -1194,87 +1373,97 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Vehicle Value</label>
-              <input type="text" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="e.g., AED 85,000" value={formData.vehicleValue} onChange={(e) => setFormData({ ...formData, vehicleValue: e.target.value })} />
+              <label className={LABEL}>Vehicle Value</label>
+              <input type="text" className={FIELD} placeholder="e.g., AED 85,000" value={formData.vehicleValue} onChange={(e) => setFormData({ ...formData, vehicleValue: e.target.value })} />
             </div>
           </div>
         </div>
 
         {/* Quote Details */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <h3 className="font-bold text-sm mb-3 text-gray-800">Quote Details</h3>
+        <div className="bg-nsib-cream/70 border border-nsib-sand p-4 rounded-xl mb-4">
+          <h3 className="font-bold text-sm mb-3 text-nsib-red uppercase tracking-wide">Quote Details</h3>
 
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Insurance Company *</label>
-            <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={formData.insuranceCompany} onChange={(e) => handleCompanyChange(e.target.value)}>
-              <option value="">Select Company</option>
-              {insuranceCompanies.map(company => (
-                <option key={company} value={company}>{company}</option>
-              ))}
-            </select>
-          </div>
-
-          {hasProductTypes && (
-            <div className="mb-3">
-              <label className="block text-xs font-bold mb-1 text-gray-800">Product Type *</label>
-              <select 
-                className="w-full p-2 border rounded text-sm text-gray-900 bg-white" 
-                value={formData.productType} 
-                onChange={(e) => handleProductTypeChange(e.target.value)}
-              >
-                <option value="">Select Product Type</option>
-                {COMPANY_PRODUCT_TYPES[formData.insuranceCompany].map(type => (
-                  <option key={type} value={type}>{type}</option>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div className={hasProductTypes ? '' : 'md:col-span-2'}>
+              <label className={LABEL}>Insurance Company *</label>
+              <select className={FIELD} value={formData.insuranceCompany} onChange={(e) => handleCompanyChange(e.target.value)}>
+                <option value="">Select Company</option>
+                {insuranceCompanies.map(company => (
+                  <option key={company} value={company}>{company}</option>
                 ))}
               </select>
             </div>
-          )}
 
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Repair Type</label>
-            <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={formData.repairType} onChange={(e) => setFormData({ ...formData, repairType: e.target.value })}>
-              <option value="">Select Type</option>
-              <option value="NA">NA</option>
-              <option value="Agency">Agency</option>
-              <option value="Non-Agency">Non-Agency</option>
-              <option value="Agency/Non-Agency">Agency/Non-Agency</option>
-              <option value="Dyna Trade">Dyna Trade</option>
-            </select>
+            {hasProductTypes && (
+              <div>
+                <label className={LABEL}>Product Type *</label>
+                <select
+                  className={FIELD}
+                  value={formData.productType}
+                  onChange={(e) => handleProductTypeChange(e.target.value)}
+                >
+                  <option value="">Select Product Type</option>
+                  {COMPANY_PRODUCT_TYPES[formData.insuranceCompany].map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className={LABEL}>Repair Type</label>
+              <select className={FIELD} value={formData.repairType} onChange={(e) => setFormData({ ...formData, repairType: e.target.value })}>
+                <option value="">Select Type</option>
+                <option value="NA">NA</option>
+                <option value="Agency">Agency</option>
+                <option value="Non-Agency">Non-Agency</option>
+                <option value="Agency/Non-Agency">Agency/Non-Agency</option>
+                <option value="Dyna Trade">Dyna Trade</option>
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Third Party Liability</label>
+              <select className={FIELD} value={formData.thirdPartyLiability} onChange={(e) => setFormData({ ...formData, thirdPartyLiability: e.target.value })}>
+                {THIRD_PARTY_LIABILITY_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className={LABEL}>Oman Cover</label>
+              <select className={FIELD} value={omanCover} onChange={(e) => setOmanCover(e.target.value)}>
+                {OMAN_COVER_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Windscreen Excess</label>
+              <select className={FIELD} value={windscreenExcess} onChange={(e) => setWindscreenExcess(e.target.value)}>
+                {WINDSCREEN_EXCESS_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Third Party Liability</label>
-            <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={formData.thirdPartyLiability} onChange={(e) => setFormData({ ...formData, thirdPartyLiability: e.target.value })}>
-              {THIRD_PARTY_LIABILITY_OPTIONS.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Oman Cover</label>
-            <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={omanCover} onChange={(e) => setOmanCover(e.target.value)}>
-              {OMAN_COVER_OPTIONS.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Windscreen Excess</label>
-            <select className="w-full p-2 border rounded text-sm text-gray-900 bg-white" value={windscreenExcess} onChange={(e) => setWindscreenExcess(e.target.value)}>
-              {WINDSCREEN_EXCESS_OPTIONS.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Coverage Options</label>
-            <div className="space-y-2 max-h-48 overflow-y-auto bg-white p-2 rounded border">
+            <label className={LABEL}>
+              Coverage Options
+              {selectedCoverage.length > 0 && (
+                <span className="ml-2 font-normal text-nsib-muted">({selectedCoverage.length} selected)</span>
+              )}
+            </label>
+            {/* Two columns: the full option list fits without a cramped inner scroll */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 max-h-64 overflow-y-auto bg-white p-3 rounded-lg border border-nsib-sand">
               {COVERAGE_OPTIONS.map(option => (
-                <label key={option.id} className="flex items-center gap-2 text-xs cursor-pointer text-gray-800">
-                  <input type="checkbox" checked={selectedCoverage.includes(option.label)} onChange={() => handleCoverageToggle(option.label)} />
+                <label key={option.id} className="flex items-center gap-2 text-xs cursor-pointer text-nsib-ink hover:text-nsib-red transition">
+                  <input type="checkbox" className="shrink-0" checked={selectedCoverage.includes(option.label)} onChange={() => handleCoverageToggle(option.label)} />
                   <span>{option.label}</span>
                 </label>
               ))}
@@ -1283,13 +1472,13 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Excess / Deductible</label>
-              <input type="number" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="1000" value={formData.excess || ''} onChange={(e) => setFormData({ ...formData, excess: parseFloat(e.target.value) || 0 })} />
+              <label className={LABEL}>Excess / Deductible</label>
+              <input type="number" className={FIELD} placeholder="1000" value={formData.excess || ''} onChange={(e) => setFormData({ ...formData, excess: parseFloat(e.target.value) || 0 })} />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Additional Excess</label>
+              <label className={LABEL}>Additional Excess</label>
               <select 
-                className="w-full p-2 border rounded text-sm text-gray-900 bg-white" 
+                className={FIELD} 
                 value={formData.additionalExcess} 
                 onChange={(e) => setFormData({ ...formData, additionalExcess: e.target.value, additionalExcessDetails: e.target.value === 'Not Applicable' ? '' : formData.additionalExcessDetails })}
               >
@@ -1302,10 +1491,10 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
           {formData.additionalExcess === 'Applicable' && (
             <div className="mb-3">
-              <label className="block text-xs font-bold mb-1 text-gray-800">Additional Excess Details</label>
+              <label className={LABEL}>Additional Excess Details</label>
               <input 
                 type="text" 
-                className="w-full p-2 border rounded text-sm text-gray-900 bg-white" 
+                className={FIELD} 
                 placeholder="Enter additional excess details..." 
                 value={formData.additionalExcessDetails} 
                 onChange={(e) => setFormData({ ...formData, additionalExcessDetails: e.target.value })} 
@@ -1313,37 +1502,36 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">Premium *</label>
-              <input type="number" step="0.01" className="w-full p-2 border rounded text-sm text-gray-900 bg-white" placeholder="2500.00" value={formData.premium || ''} onChange={(e) => handlePremiumChange(parseFloat(e.target.value) || 0)} />
+              <label className={LABEL}>Premium *</label>
+              <input type="number" step="0.01" className={FIELD} placeholder="2500.00" value={formData.premium || ''} onChange={(e) => handlePremiumChange(parseFloat(e.target.value) || 0)} />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-800">VAT (5%)</label>
-              <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100 text-gray-900 font-semibold" value={vat.toFixed(2)} readOnly />
+              <label className={LABEL}>VAT (5%)</label>
+              <input type="text" className="w-full px-3 py-2.5 border border-nsib-sand rounded-lg text-sm bg-nsib-cream text-nsib-ink font-semibold" value={vat.toFixed(2)} readOnly />
+            </div>
+            <div className="col-span-2 md:col-span-1">
+              <label className={LABEL}>Total Amount</label>
+              <input type="text" className="w-full px-3 py-2.5 border border-nsib-gold/40 rounded-lg text-sm bg-nsib-gold-soft font-bold text-nsib-red" value={total.toFixed(2)} readOnly />
             </div>
           </div>
 
-          <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Total Amount</label>
-            <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100 font-bold text-indigo-600" value={total.toFixed(2)} readOnly />
-          </div>
-
-          <div className="flex gap-3 mb-3">
-            <label className="flex items-center gap-2 text-xs font-bold text-gray-800 cursor-pointer">
+          <div className="flex gap-4 mb-3">
+            <label className="flex items-center gap-2 text-xs font-bold text-nsib-ink cursor-pointer">
               <input type="checkbox" checked={formData.isRecommended} onChange={(e) => setFormData({ ...formData, isRecommended: e.target.checked })} />
               Recommended
             </label>
-            <label className="flex items-center gap-2 text-xs font-bold text-gray-800 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs font-bold text-nsib-ink cursor-pointer">
               <input type="checkbox" checked={formData.isRenewal} onChange={(e) => setFormData({ ...formData, isRenewal: e.target.checked })} />
               Renewal
             </label>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-bold mb-1 text-gray-800">Advisor Comment (Optional)</label>
+            <label className={LABEL}>Advisor Comment (Optional)</label>
             <textarea
-              className="w-full p-2 border-2 rounded text-sm text-gray-900 bg-white focus:border-indigo-500"
+              className={FIELD}
               placeholder="Enter specific comment for this insurance company..."
               rows={3}
               value={advisorComment}
@@ -1351,39 +1539,39 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
             />
           </div>
 
-          <button onClick={addQuote} className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition">
+          <button onClick={addQuote} className="w-full bg-nsib-red text-white p-3 rounded-lg font-bold hover:bg-nsib-red-dark transition shadow-card">
             Add Quote to Comparison
           </button>
         </div>
 
         {quotes.length > 0 && (
-          <>
-            <button onClick={saveAndDownload} className="w-full bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition mb-2">
-              {currentReferenceNumber ? 'Update & Download' : 'Save & Download'} ({quotes.length} quotes)
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onClick={saveAndDownload} className="bg-nsib-gold text-nsib-red-dark p-3 rounded-lg font-bold hover:bg-nsib-gold-dark hover:text-white transition shadow-card">
+              {currentReferenceNumber ? 'Update & Download' : 'Save & Download'} ({quotes.length})
             </button>
-            <button onClick={startNewComparison} className="w-full bg-orange-600 text-white p-3 rounded-lg font-bold hover:bg-orange-700 transition">
+            <button onClick={startNewComparison} className="bg-white text-nsib-red border-2 border-nsib-red p-3 rounded-lg font-bold hover:bg-nsib-red-soft transition">
               Start New Comparison
             </button>
-          </>
+          </div>
         )}
       </div>
 
       {/* RIGHT PANEL - COMPARISON TABLE */}
-      <div className="bg-white rounded-xl p-5 shadow-2xl max-h-[calc(100vh-150px)] overflow-auto">
-        <h2 className="text-xl font-bold text-center mb-5 text-gray-800">Live Comparison ({quotes.length})</h2>
-        
+      <div className={`${PANEL} p-5 max-h-[calc(100vh-160px)] overflow-auto`}>
+        <h2 className="text-lg font-bold mb-5 text-nsib-red">Live Comparison ({quotes.length})</h2>
+
         {quotes.length === 0 ? (
-          <div className="text-center text-gray-400 italic py-20">
-            Add quotes to see comparison table
+          <div className="text-center text-nsib-muted italic py-20">
+            Add quotes to see the comparison table
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="sticky top-0 bg-white z-20">
-                  <th className="bg-gray-200 p-2 border text-left sticky left-0 z-30 min-w-[150px] text-gray-900">Field</th>
+                  <th className="bg-nsib-cream p-2 border border-nsib-sand text-left sticky left-0 z-30 min-w-[150px] text-nsib-ink">Field</th>
                   {sortedQuotes.map((q) => (
-                    <th key={q.id} className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 border text-center min-w-[180px]">
+                    <th key={q.id} className="bg-gradient-to-b from-nsib-red to-nsib-red-dark text-white p-3 border border-nsib-red-dark text-center min-w-[180px]">
                       {COMPANY_LOGOS[q.company] && (
                         <img src={COMPANY_LOGOS[q.company]} alt={q.company} className="h-8 mx-auto mb-1 bg-white rounded p-1" />
                       )}
@@ -1392,15 +1580,15 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                       <div className="text-base font-bold">AED {q.total.toFixed(2)}</div>
                       <div className="flex gap-1 justify-center mt-2">
                         {editingQuoteId === q.id ? (
-                          <button onClick={() => setEditingQuoteId(null)} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">
+                          <button onClick={() => setEditingQuoteId(null)} className="bg-white text-nsib-red px-2 py-1 rounded text-xs font-bold hover:bg-nsib-gold-soft">
                             Done
                           </button>
                         ) : (
-                          <button onClick={() => setEditingQuoteId(q.id)} className="bg-yellow-500 text-gray-900 px-2 py-1 rounded text-xs hover:bg-yellow-600">
+                          <button onClick={() => setEditingQuoteId(q.id)} className="bg-nsib-gold text-nsib-red-dark px-2 py-1 rounded text-xs font-bold hover:bg-nsib-gold-dark hover:text-white">
                             Edit
                           </button>
                         )}
-                        <button onClick={() => removeQuote(q.id)} className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
+                        <button onClick={() => removeQuote(q.id)} className="bg-white/15 border border-white/40 text-white px-2 py-1 rounded text-xs font-bold hover:bg-white/25">
                           Del
                         </button>
                       </div>
@@ -1411,30 +1599,30 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
               <tbody>
                 {/* Company */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Company</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Company</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">{q.company}</td>
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">{q.company}</td>
                   ))}
                 </tr>
 
                 {/* Product Type */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Product Type</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Product Type</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900 text-xs">{q.productType || 'N/A'}</td>
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink text-xs">{q.productType || 'N/A'}</td>
                   ))}
                 </tr>
 
                 {/* Repair Type */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Repair Type</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Repair Type</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <select 
                           value={q.repairType} 
                           onChange={(e) => updateQuoteField(q.id, 'repairType', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         >
                           <option value="NA">NA</option>
                           <option value="Agency">Agency</option>
@@ -1451,15 +1639,15 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Vehicle Value */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Vehicle Value</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Vehicle Value</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <input 
                           type="text" 
                           value={q.value}
                           onChange={(e) => updateQuoteField(q.id, 'value', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         />
                       ) : (
                         q.value
@@ -1470,14 +1658,14 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Third Party Liability */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Third Party Liability</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Third Party Liability</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <select 
                           value={q.thirdPartyLiability}
                           onChange={(e) => updateQuoteField(q.id, 'thirdPartyLiability', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         >
                           {THIRD_PARTY_LIABILITY_OPTIONS.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
@@ -1492,14 +1680,14 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Oman Cover */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Oman Cover</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Oman Cover</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <select 
                           value={q.omanCover}
                           onChange={(e) => updateQuoteField(q.id, 'omanCover', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         >
                           {OMAN_COVER_OPTIONS.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
@@ -1514,14 +1702,14 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Windscreen Excess */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Windscreen Excess</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Windscreen Excess</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <select 
                           value={q.windscreenExcess}
                           onChange={(e) => updateQuoteField(q.id, 'windscreenExcess', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         >
                           {WINDSCREEN_EXCESS_OPTIONS.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
@@ -1537,11 +1725,11 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                 {/* Coverage Options */}
                 {COVERAGE_OPTIONS.map(option => (
                   <tr key={option.id}>
-                    <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">{option.label}</td>
+                    <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">{option.label}</td>
                     {sortedQuotes.map(q => {
                       const included = q.coverageOptions.includes(option.label);
                       return (
-                        <td key={q.id} className="p-2 border text-center bg-white">
+                        <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white">
                           {editingQuoteId === q.id ? (
                             <input 
                               type="checkbox"
@@ -1554,7 +1742,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                               }}
                             />
                           ) : (
-                            <span className={included ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                            <span className={included ? 'text-emerald-700 font-bold' : 'text-nsib-muted font-bold'}>
                               {included ? 'YES' : 'NO'}
                             </span>
                           )}
@@ -1565,16 +1753,16 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                 ))}
 
                 {/* Excess */}
-                <tr className="bg-blue-50">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Excess / Deductible</td>
+                <tr className="bg-nsib-gold-soft">
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-gold-soft sticky left-0 z-10 text-nsib-ink">Excess / Deductible</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-nsib-gold-soft text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <input 
                           type="number"
                           value={q.excess}
                           onChange={(e) => updateQuoteField(q.id, 'excess', parseFloat(e.target.value) || 0)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         />
                       ) : (
                         `AED ${q.excess.toLocaleString()}`
@@ -1584,16 +1772,16 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                 </tr>
 
                 {/* Additional Excess */}
-                <tr className="bg-blue-50">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Additional Excess</td>
+                <tr className="bg-nsib-gold-soft">
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-gold-soft sticky left-0 z-10 text-nsib-ink">Additional Excess</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-nsib-gold-soft text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <div>
                           <select 
                             value={q.additionalExcess || ''}
                             onChange={(e) => updateQuoteField(q.id, 'additionalExcess', e.target.value)}
-                            className="w-full p-1 border rounded text-xs text-gray-900 mb-1"
+                            className={`${CELL_FIELD} mb-1`}
                           >
                             <option value="">Select</option>
                             <option value="Applicable">Applicable</option>
@@ -1604,7 +1792,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                               type="text"
                               value={q.additionalExcessDetails || ''}
                               onChange={(e) => updateQuoteField(q.id, 'additionalExcessDetails', e.target.value)}
-                              className="w-full p-1 border rounded text-xs text-gray-900"
+                              className={CELL_FIELD}
                               placeholder="Details..."
                             />
                           )}
@@ -1617,17 +1805,17 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                 </tr>
 
                 {/* Premium */}
-                <tr className="bg-blue-50">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Premium</td>
+                <tr className="bg-nsib-gold-soft">
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-gold-soft sticky left-0 z-10 text-nsib-ink">Premium</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-nsib-gold-soft text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <input 
                           type="number"
                           step="0.01"
                           value={q.premium}
                           onChange={(e) => updateQuoteField(q.id, 'premium', parseFloat(e.target.value) || 0)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                         />
                       ) : (
                         `AED ${q.premium.toFixed(2)}`
@@ -1637,20 +1825,20 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                 </tr>
 
                 {/* VAT */}
-                <tr className="bg-blue-50">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">VAT (5%)</td>
+                <tr className="bg-nsib-gold-soft">
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-gold-soft sticky left-0 z-10 text-nsib-ink">VAT (5%)</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-blue-50 text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-nsib-gold-soft text-nsib-ink">
                       AED {q.vat.toFixed(2)}
                     </td>
                   ))}
                 </tr>
 
                 {/* Total */}
-                <tr className="bg-blue-100">
-                  <td className="p-2 border font-bold bg-gray-100 sticky left-0 z-10 text-gray-900">Total Premium</td>
+                <tr className="bg-nsib-red-soft">
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-red text-white sticky left-0 z-10">Total Premium</td>
                   {sortedQuotes.map((q) => (
-                    <td key={q.id} className="p-2 border text-center font-bold bg-blue-100 text-gray-900 text-base">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center font-bold bg-nsib-red-soft text-nsib-red text-base">
                       AED {q.total.toFixed(2)}
                     </td>
                   ))}
@@ -1658,14 +1846,14 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Advisor Comment */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Advisor Comment</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Advisor Comment</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white text-gray-900">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white text-nsib-ink">
                       {editingQuoteId === q.id ? (
                         <textarea 
                           value={q.advisorComment}
                           onChange={(e) => updateQuoteField(q.id, 'advisorComment', e.target.value)}
-                          className="w-full p-1 border rounded text-xs text-gray-900"
+                          className={CELL_FIELD}
                           rows={2}
                           placeholder="Optional"
                         />
@@ -1678,13 +1866,13 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
 
                 {/* Status */}
                 <tr>
-                  <td className="p-2 border font-bold bg-gray-50 sticky left-0 z-10 text-gray-900">Status</td>
+                  <td className="p-2 border border-nsib-sand font-bold bg-nsib-cream/60 sticky left-0 z-10 text-nsib-ink">Status</td>
                   {sortedQuotes.map(q => (
-                    <td key={q.id} className="p-2 border text-center bg-white">
+                    <td key={q.id} className="p-2 border border-nsib-sand text-center bg-white">
                       <div className="flex flex-col gap-1">
                         {editingQuoteId === q.id ? (
                           <>
-                            <label className="flex items-center justify-center gap-1 text-xs text-gray-900">
+                            <label className="flex items-center justify-center gap-1 text-xs text-nsib-ink">
                               <input 
                                 type="checkbox"
                                 checked={q.isRecommended}
@@ -1692,7 +1880,7 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                               />
                               Recommended
                             </label>
-                            <label className="flex items-center justify-center gap-1 text-xs text-gray-900">
+                            <label className="flex items-center justify-center gap-1 text-xs text-nsib-ink">
                               <input 
                                 type="checkbox"
                                 checked={q.isRenewal}
@@ -1703,9 +1891,9 @@ function QuoteGeneratorPage(props: QuoteGeneratorPageProps) {
                           </>
                         ) : (
                           <>
-                            {q.isRecommended && <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">Recommended</span>}
-                            {q.isRenewal && <span className="bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs">Renewal</span>}
-                            {!q.isRecommended && !q.isRenewal && <span className="text-gray-400 text-xs">-</span>}
+                            {q.isRecommended && <span className="bg-nsib-red text-white px-2 py-1 rounded-full text-xs font-semibold">Recommended</span>}
+                            {q.isRenewal && <span className="bg-nsib-gold text-nsib-red-dark px-2 py-1 rounded-full text-xs font-semibold">Renewal</span>}
+                            {!q.isRecommended && !q.isRenewal && <span className="text-nsib-muted text-xs">-</span>}
                           </>
                         )}
                       </div>
@@ -1730,6 +1918,12 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
   const [history, setHistory] = useState<SavedComparison[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [createdByFilter, setCreatedByFilter] = useState('all');
+  const [periodFilter, setPeriodFilter] = useState('all');
+  // Custom range bounds, as yyyy-mm-dd from the date inputs. Either side may be
+  // left blank for an open-ended range.
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     loadHistory();
@@ -1799,131 +1993,311 @@ function SavedHistoryPage({ loadComparison }: SavedHistoryPageProps) {
     });
   };
 
-  const filteredHistory = history.filter(comparison => {
-    if (!searchTerm.trim()) return true;
-    
-    const search = searchTerm.toLowerCase().trim();
-    const customerName = comparison.quotes?.[0]?.customerName?.toLowerCase() || '';
-    const enquiryNumber = comparison.quotes?.[0]?.enquiryNumber?.toLowerCase() || '';
-    const referenceNumber = comparison.referenceNumber?.toLowerCase() || '';
-    const vehicle = comparison.vehicle?.toLowerCase() || '';
-    
-    return customerName.includes(search) || 
-           enquiryNumber.includes(search) || 
-           referenceNumber.includes(search) ||
-           vehicle.includes(search);
-  });
+  // Unique "Created by" values, so the dropdown only offers advisors who
+  // actually have saved records.
+  const creators = useMemo(() => {
+    const names = new Set<string>();
+    history.forEach(comparison => {
+      if (comparison.createdBy) names.add(comparison.createdBy);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [history]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    let thisMonth = 0;
+    let lastMonth = 0;
+
+    history.forEach(comparison => {
+      const date = new Date(comparison.date);
+      if (isNaN(date.getTime())) return;
+      if (date >= thisMonthStart) thisMonth++;
+      else if (date >= lastMonthStart) lastMonth++;
+    });
+
+    return { total: history.length, thisMonth, lastMonth };
+  }, [history]);
+
+  const filteredHistory = useMemo(() => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const last7Start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // A yyyy-mm-dd string parses as UTC midnight, which shifts the boundary by
+    // the timezone offset. Build local dates so "from 29 Jul" means 29 Jul here.
+    const parseLocal = (value: string, endOfDay: boolean) => {
+      const [y, m, d] = value.split('-').map(Number);
+      if (!y || !m || !d) return null;
+      return endOfDay
+        ? new Date(y, m - 1, d, 23, 59, 59, 999)
+        : new Date(y, m - 1, d, 0, 0, 0, 0);
+    };
+
+    const rangeStart = periodFilter === 'custom' && fromDate ? parseLocal(fromDate, false) : null;
+    const rangeEnd = periodFilter === 'custom' && toDate ? parseLocal(toDate, true) : null;
+
+    return history.filter(comparison => {
+      if (createdByFilter !== 'all' && comparison.createdBy !== createdByFilter) {
+        return false;
+      }
+
+      if (periodFilter !== 'all') {
+        const date = new Date(comparison.date);
+        if (isNaN(date.getTime())) return false;
+
+        if (periodFilter === 'thisMonth' && date < thisMonthStart) return false;
+        if (periodFilter === 'lastMonth' && (date < lastMonthStart || date >= thisMonthStart)) return false;
+        if (periodFilter === 'last7' && date < last7Start) return false;
+        if (periodFilter === 'last30' && date < last30Start) return false;
+        if (rangeStart && date < rangeStart) return false;
+        if (rangeEnd && date > rangeEnd) return false;
+      }
+
+      if (!searchTerm.trim()) return true;
+
+      const search = searchTerm.toLowerCase().trim();
+      const customerName = comparison.quotes?.[0]?.customerName?.toLowerCase() || '';
+      const enquiryNumber = comparison.quotes?.[0]?.enquiryNumber?.toLowerCase() || '';
+      const referenceNumber = comparison.referenceNumber?.toLowerCase() || '';
+      const vehicle = comparison.vehicle?.toLowerCase() || '';
+
+      return customerName.includes(search) ||
+             enquiryNumber.includes(search) ||
+             referenceNumber.includes(search) ||
+             vehicle.includes(search);
+    });
+  }, [history, searchTerm, createdByFilter, periodFilter, fromDate, toDate]);
+
+  const filtersActive = searchTerm.trim() !== '' || createdByFilter !== 'all' || periodFilter !== 'all';
+  const invalidRange = periodFilter === 'custom' && fromDate !== '' && toDate !== '' && fromDate > toDate;
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setCreatedByFilter('all');
+    setPeriodFilter('all');
+    setFromDate('');
+    setToDate('');
+  };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl p-5 shadow-2xl">
-        <div className="text-center py-20">
-          <div className="text-xl font-bold text-gray-600">Loading history...</div>
-        </div>
+      <div className={`${PANEL} p-5`}>
+        <div className="text-center py-20 text-nsib-muted font-semibold">Loading history...</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl p-5 shadow-2xl">
-      <div className="flex justify-between items-center mb-4">
+    <div className={`${PANEL} p-5`}>
+      <div className="flex justify-between items-center mb-5">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Saved History</h2>
-          <p className="text-sm text-gray-600">Synced across all devices</p>
+          <h2 className="text-2xl font-bold text-nsib-red">Saved History</h2>
+          <p className="text-sm text-nsib-muted">Every saved comparison, synced across devices</p>
         </div>
-        <button 
+        <button
           onClick={loadHistory}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition"
+          className="bg-white border border-nsib-sand text-nsib-ink px-4 py-2 rounded-lg font-bold text-sm hover:bg-nsib-gold-soft hover:border-nsib-gold transition"
         >
-          Refresh
+          ↻ Refresh
         </button>
       </div>
 
-      <div className="mb-4">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search by Customer Name, Enquiry Number, or Reference..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 pl-4 pr-10 border-2 border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:outline-none text-gray-900 bg-white"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {[
+          { label: 'Total Saved', value: stats.total, tone: 'text-nsib-red', accent: 'bg-nsib-red' },
+          { label: 'This Month', value: stats.thisMonth, tone: 'text-emerald-700', accent: 'bg-emerald-600' },
+          { label: 'Last Month', value: stats.lastMonth, tone: 'text-nsib-gold-dark', accent: 'bg-nsib-gold' },
+          { label: 'Showing', value: filteredHistory.length, tone: 'text-nsib-ink', accent: 'bg-nsib-muted' },
+        ].map(card => (
+          <div key={card.label} className="bg-white border border-nsib-sand rounded-2xl shadow-card overflow-hidden">
+            <div className="p-4">
+              <div className="text-[11px] font-bold text-nsib-muted uppercase tracking-wide">{card.label}</div>
+              <div className={`text-3xl font-bold mt-1 ${card.tone}`}>{card.value}</div>
+            </div>
+            <div className={`h-1 ${card.accent}`} />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-nsib-cream/70 border border-nsib-sand rounded-2xl p-4 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-3">
+          <div>
+            <label className="block text-xs font-bold text-nsib-muted mb-1">🔍 Search</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by Customer Name, Enquiry Number, or Reference..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-3 pl-4 pr-10 border border-nsib-sand rounded-lg text-sm focus:border-nsib-red focus:outline-none text-nsib-ink bg-white transition"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-nsib-muted hover:text-nsib-red font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-nsib-muted mb-1">👤 Created by</label>
+            <select
+              value={createdByFilter}
+              onChange={(e) => setCreatedByFilter(e.target.value)}
+              className="w-full p-3 border border-nsib-sand rounded-lg text-sm focus:border-nsib-red focus:outline-none text-nsib-ink bg-white transition"
             >
-              X
-            </button>
-          )}
+              <option value="all">Everyone</option>
+              {creators.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-nsib-muted mb-1">📅 Period</label>
+            <select
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value)}
+              className="w-full p-3 border border-nsib-sand rounded-lg text-sm focus:border-nsib-red focus:outline-none text-nsib-ink bg-white transition"
+            >
+              <option value="all">All time</option>
+              <option value="thisMonth">This month</option>
+              <option value="lastMonth">Last month</option>
+              <option value="last7">Last 7 days</option>
+              <option value="last30">Last 30 days</option>
+              <option value="custom">Custom date range</option>
+            </select>
+          </div>
         </div>
-        {searchTerm && (
-          <p className="text-sm text-gray-500 mt-1">
-            Found {filteredHistory.length} of {history.length} records
-          </p>
+
+        {periodFilter === 'custom' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-nsib-sand">
+            <div>
+              <label className="block text-xs font-bold text-nsib-muted mb-1">From date</label>
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full p-3 border border-nsib-sand rounded-lg text-sm focus:border-nsib-red focus:outline-none text-nsib-ink bg-white transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-nsib-muted mb-1">To date</label>
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full p-3 border border-nsib-sand rounded-lg text-sm focus:border-nsib-red focus:outline-none text-nsib-ink bg-white transition"
+              />
+            </div>
+            {invalidRange && (
+              <p className="sm:col-span-2 text-xs font-semibold text-nsib-red">
+                The From date is after the To date — no records can match.
+              </p>
+            )}
+            {!fromDate && !toDate && (
+              <p className="sm:col-span-2 text-xs text-nsib-muted">
+                Pick one or both dates. Leaving one blank keeps that end of the range open.
+              </p>
+            )}
+          </div>
+        )}
+
+        {filtersActive && (
+          <div className="flex items-center justify-between mt-3">
+            <p className="text-sm text-nsib-muted">
+              Found {filteredHistory.length} of {history.length} records
+            </p>
+            <button
+              onClick={clearFilters}
+              className="text-sm font-bold text-nsib-red hover:text-nsib-red-dark"
+            >
+              Clear filters
+            </button>
+          </div>
         )}
       </div>
-      
+
       {history.length === 0 ? (
-        <div className="text-center text-gray-400 italic py-20">
+        <div className="text-center text-nsib-muted italic py-20">
           No saved comparisons yet.
         </div>
       ) : filteredHistory.length === 0 ? (
-        <div className="text-center text-gray-400 italic py-20">
-          No results found for &quot;{searchTerm}&quot;
+        <div className="text-center text-nsib-muted italic py-20">
+          No records match the selected filters.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredHistory.map(comparison => (
-            <div key={comparison.id} className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-lg border-2 border-gray-200 hover:border-indigo-400 transition shadow-sm hover:shadow-md">
+            <div
+              key={comparison.id}
+              className="bg-white p-5 rounded-2xl border border-nsib-sand shadow-card hover:shadow-card-hover hover:border-nsib-gold transition flex flex-col"
+            >
               <div className="mb-3">
-                <div className="font-bold text-lg text-gray-900">{comparison.vehicle}</div>
-                {comparison.createdBy && (
-                  <div className="text-xs text-orange-600">Created by: {comparison.createdBy}</div>
-                )}
+                <div className="font-bold text-lg text-nsib-ink">{comparison.vehicle}</div>
                 {comparison.quotes?.[0]?.customerName && (
-                  <div className="text-sm text-gray-700">Customer: {comparison.quotes[0].customerName}</div>
+                  <div className="text-sm text-nsib-ink/80">{comparison.quotes[0].customerName}</div>
                 )}
-                {comparison.quotes?.[0]?.enquiryNumber && (
-                  <div className="text-xs text-green-600 font-mono">Enq: {comparison.quotes[0].enquiryNumber}</div>
-                )}
-                <div className="text-xs text-gray-500">{formatDate(comparison.date)}</div>
-                <div className="text-xs text-indigo-600 font-mono">Ref: {comparison.referenceNumber}</div>
-              </div>
-              
-              <div className="mb-3">
-                <div className="text-sm text-gray-700 mb-2"><strong>Quotes:</strong> {comparison.quotes?.length || 0}</div>
-                <div className="text-xs text-gray-600 max-h-24 overflow-y-auto">
-                  {comparison.quotes?.map(q => (
-                    <div key={q.id} className="truncate">
-                      - {q.company} - AED {q.total?.toFixed(2) || '0.00'}
-                      {q.isRenewal && ' (R)'}
-                      {q.isRecommended && ' (*)'}
-                    </div>
-                  )) || <div className="text-gray-400">No quote details</div>}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-mono">
+                  <span className="text-nsib-red">Ref: {comparison.referenceNumber}</span>
+                  {comparison.quotes?.[0]?.enquiryNumber && (
+                    <span className="text-nsib-gold-dark">Enq: {comparison.quotes[0].enquiryNumber}</span>
+                  )}
+                </div>
+                <div className="text-xs text-nsib-muted mt-1">
+                  {formatDate(comparison.date)}
+                  {comparison.createdBy && ` • ${comparison.createdBy}`}
                 </div>
               </div>
-              
+
+              <div className="mb-4 flex-1">
+                <div className="text-xs font-bold text-nsib-muted uppercase tracking-wide mb-1">
+                  {comparison.quotes?.length || 0} Quotes
+                </div>
+                <div className="text-xs text-nsib-ink/80 max-h-24 overflow-y-auto space-y-0.5">
+                  {comparison.quotes?.map(q => (
+                    <div key={q.id} className="truncate">
+                      {q.company} — AED {q.total?.toFixed(2) || '0.00'}
+                      {q.isRenewal && ' (R)'}
+                      {q.isRecommended && ' ★'}
+                    </div>
+                  )) || <div className="text-nsib-muted">No quote details</div>}
+                </div>
+              </div>
+
               <div className="flex gap-2 flex-wrap">
-                <button 
-                  onClick={() => loadComparison(comparison)} 
-                  className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 transition"
+                <button
+                  onClick={() => loadComparison(comparison)}
+                  className="flex-1 bg-nsib-red text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-nsib-red-dark transition"
                   title={(comparison.rebuilt || comparison.quotes?.[0]?.recovered) ? 'Reconstructs the full quotes from the saved document, then opens for editing.' : undefined}
                 >
-                  {(comparison.rebuilt || comparison.quotes?.[0]?.recovered) ? 'Rebuild & Edit' : 'Load & Edit'}
+                  {(comparison.rebuilt || comparison.quotes?.[0]?.recovered) ? 'Rebuild & Edit' : 'Edit'}
                 </button>
                 {comparison.fileUrl && (
-                  <a 
-                    href={comparison.fileUrl} 
-                    target="_blank" 
+                  <a
+                    href={comparison.fileUrl}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700 transition text-center"
+                    className="flex-1 bg-nsib-gold text-nsib-red-dark px-3 py-2 rounded-lg text-sm font-bold hover:bg-nsib-gold-dark hover:text-white transition text-center"
                   >
                     View
                   </a>
                 )}
-                <button onClick={() => deleteComparison(comparison.id)} className="bg-red-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-red-700 transition">
-                  Del
+                <button
+                  onClick={() => deleteComparison(comparison.id)}
+                  className="px-3 py-2 rounded-lg text-sm font-bold text-nsib-red border border-nsib-sand hover:bg-nsib-red-soft hover:border-nsib-red transition"
+                >
+                  Delete
                 </button>
               </div>
             </div>
