@@ -80,6 +80,14 @@ export function clearAuthCookie(): string {
   return 'auth_token=; Path=/; HttpOnly; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 }
 
+// The signed-in user behind a request, or null. Checks the token's signature
+// and expiry only: the user store is in memory per server instance, so looking
+// the user up as well would turn away advisors at random on Vercel.
+export function getSession(request: Request): { userId: string; email: string; role: UserRole } | null {
+  const token = getTokenFromCookie(request.headers.get('cookie'));
+  return token ? verifyToken(token) : null;
+}
+
 export function getTokenFromCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
   

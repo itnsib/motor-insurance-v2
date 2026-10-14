@@ -21,9 +21,9 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-// The top bar is two separate elements (sidebar brand block + page header). A
-// horizontal gradient restarts at the seam and makes them look like two different
-// reds, so both share this vertical one instead — identical at every x.
+// Shared maroon fill for any surface that needs to carry the brand at full
+// strength. The chrome is warm paper now, so this is reserved for content
+// elements (e.g. the dashboard's executive band) rather than the header bar.
 export const BRAND_GRADIENT = 'bg-gradient-to-b from-nsib-red to-nsib-red-dark';
 
 // ============ BRAND LOGO ============
@@ -199,46 +199,70 @@ export default function AppShell({
   };
 
   return (
-    <div className="min-h-screen bg-nsib-cream">
+    <div className="min-h-screen nsib-app-surface">
       {/* Mobile scrim */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-nsib-ink/40 z-30 lg:hidden"
+          className="fixed inset-0 bg-nsib-ink/40 backdrop-blur-[2px] z-30 lg:hidden transition-opacity duration-200"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-nsib-sand flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-nsib-ivory flex flex-col shadow-rail transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand block carries the same red as the page header so the two read as
-            one continuous bar across the top of the app. */}
-        <div className={`flex items-center gap-3 px-5 h-20 ${BRAND_GRADIENT}`}>
-          {/* Cropped to the crest — the full lockup's wordmark is illegible at 48px */}
-          <span className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shrink-0 p-1 shadow-card overflow-hidden">
+        {/* Hairline gold edge instead of a hard border — reads as a rule, not a seam. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-nsib-gold/10 via-nsib-gold/55 to-nsib-gold/10"
+        />
+
+        {/* Brand block carries the maroon so the rail reads as branded chrome.
+            73px = the header's 4.5rem bar plus its 1px gold divider, so this
+            block's own rule lands exactly on the header's. */}
+        <div className={`relative flex items-center gap-3 px-5 h-[73px] shrink-0 ${BRAND_GRADIENT}`}>
+          <div aria-hidden="true" className="absolute inset-0 nsib-header-sheen" />
+          {/* Cropped to the crest — the full lockup's wordmark is illegible at 44px */}
+          <span className="relative w-11 h-11 rounded-xl bg-white flex items-center justify-center shrink-0 p-1 shadow-card ring-1 ring-nsib-gold/50 overflow-hidden">
             <BrandLogo className="w-full h-full" fit="object-cover object-top" />
           </span>
-          <div className="font-bold text-white text-xl tracking-wide">NSIB</div>
+          <div className="relative font-bold text-nsib-cream-light text-lg tracking-[0.22em] leading-none">NSIB</div>
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-px nsib-gold-rule" />
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="relative flex-1 px-3 py-5 space-y-1.5 overflow-y-auto">
           {NAV_ITEMS.map(item => {
             const isActive = active === item.view;
             return (
               <button
                 key={item.view}
                 onClick={() => go(item.view)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${
+                className={`group relative w-full flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl text-sm text-left transition-all duration-200 ${
                   isActive
-                    ? 'bg-nsib-red text-white shadow-card'
-                    : 'text-nsib-ink/80 hover:bg-nsib-gold-soft hover:text-nsib-red'
+                    ? 'bg-gradient-to-r from-nsib-gold-soft to-white text-nsib-red font-bold ring-1 ring-nsib-gold/45 shadow-card'
+                    : 'text-nsib-ink/70 font-semibold ring-1 ring-transparent hover:bg-white/80 hover:text-nsib-red hover:ring-nsib-sand'
                 }`}
               >
-                <NavIcon view={item.view} filled={isActive} />
-                {item.label}
+                {/* Thin maroon indicator marks the active view; gold previews on hover. */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-200 ${
+                    isActive ? 'h-8 bg-nsib-red' : 'h-0 bg-nsib-gold group-hover:h-5'
+                  }`}
+                />
+                <span
+                  className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all duration-200 ${
+                    isActive
+                      ? 'bg-nsib-red text-white shadow-nav-active'
+                      : 'text-nsib-muted ring-1 ring-nsib-sand group-hover:text-nsib-red group-hover:ring-nsib-gold/50 group-hover:bg-nsib-gold-soft'
+                  }`}
+                >
+                  <NavIcon view={item.view} filled={isActive} />
+                </span>
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}
@@ -247,21 +271,32 @@ export default function AppShell({
 
       {/* MAIN COLUMN */}
       <div className="lg:pl-64">
-        <header className={`sticky top-0 z-20 ${BRAND_GRADIENT} text-white shadow-card`}>
-          <div className="flex items-center gap-4 px-4 sm:px-6 h-20">
+        {/* Deep maroon executive header: gold eyebrow over a cream title, closed
+            by a gold divider. */}
+        <header className="sticky top-0 z-20 bg-gradient-to-br from-nsib-red via-nsib-red-dark to-nsib-red-deep shadow-header">
+          <div aria-hidden="true" className="absolute inset-0 nsib-header-sheen" />
+
+          <div className="relative flex items-center gap-4 px-4 sm:px-6 lg:px-8 h-[4.5rem]">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-white/15 transition"
+              className="lg:hidden p-2 -ml-1 rounded-lg text-nsib-gold-light ring-1 ring-nsib-gold/40 hover:bg-white/12 hover:ring-nsib-gold transition duration-200"
               aria-label="Open navigation"
             >
-              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
               </svg>
             </button>
 
+            {/* Eyebrow over title — editorial hierarchy rather than title-over-caption. */}
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{title}</h1>
-              {subtitle && <p className="text-white/70 text-xs sm:text-sm truncate">{subtitle}</p>}
+              {subtitle && (
+                <p className="text-[0.6rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.22em] text-nsib-gold truncate">
+                  {subtitle}
+                </p>
+              )}
+              <h1 className="text-xl sm:text-[1.4rem] leading-tight font-bold text-nsib-cream-light tracking-tight truncate">
+                {title}
+              </h1>
             </div>
 
             {headerExtra}
@@ -270,7 +305,7 @@ export default function AppShell({
             <div className="relative shrink-0" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(open => !open)}
-                className="w-11 h-11 rounded-full bg-nsib-gold text-nsib-red-dark font-bold flex items-center justify-center ring-2 ring-white/40 hover:ring-white transition"
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-nsib-gold-light via-nsib-gold to-nsib-gold-dark text-nsib-red-deep text-sm font-bold flex items-center justify-center ring-2 ring-nsib-gold/40 hover:ring-white/80 shadow-card hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5"
                 aria-label="Account menu"
                 aria-expanded={menuOpen}
               >
@@ -278,14 +313,14 @@ export default function AppShell({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-card-hover border border-nsib-sand overflow-hidden">
-                  <div className="px-4 py-3 bg-nsib-gold-soft border-b border-nsib-sand">
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-card-hover border border-nsib-gold/30 overflow-hidden">
+                  <div className="px-4 py-3 bg-gradient-to-r from-nsib-gold-soft to-nsib-cream-light border-b border-nsib-gold/25">
                     <div className="font-bold text-nsib-ink truncate">{user?.name || 'NSIB User'}</div>
                     <div className="text-xs text-nsib-muted truncate">{user?.email || '—'}</div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 text-sm font-semibold text-nsib-red hover:bg-nsib-red-soft transition"
+                    className="w-full text-left px-4 py-3 text-sm font-semibold text-nsib-red hover:bg-nsib-red-soft transition duration-200"
                   >
                     Logout
                   </button>
@@ -293,9 +328,12 @@ export default function AppShell({
               )}
             </div>
           </div>
+
+          {/* Gold divider closes the maroon band */}
+          <div aria-hidden="true" className="relative h-px nsib-gold-rule" />
         </header>
 
-        <main className="p-4 sm:p-6">{children}</main>
+        <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</main>
       </div>
     </div>
   );

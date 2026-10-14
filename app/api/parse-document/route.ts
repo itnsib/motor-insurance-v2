@@ -22,11 +22,15 @@ const NON_COVERAGE_ROWS = new Set([
   'Repair Type',
   'Vehicle Value',
   'Third Party Liability',
+  // Reports generated before the label was shortened still carry the long form.
+  'Oman Cover',
   'Oman Cover (Own damage only)',
   'Windscreen Excess',
   'Excess',
   'Premium',
   'VAT (5%)',
+  'Sub-Total',
+  'Total Payable',
   'Total',
   'Advisor Comment',
 ]);
@@ -164,6 +168,12 @@ function parseHtmlToQuotes(html: string): ParsedQuote[] {
   const advisor = new Array(numCompanies).fill('');
   const coverage: string[][] = Array.from({ length: numCompanies }, () => []);
 
+  // Current reports carry two money rows: "Sub-Total" (premium + VAT, which is
+  // what a Quote stores) and a closing "Total" that adds the Rent a Car charge.
+  // Older reports have only "Total", holding the sub-total figure. So Total is
+  // read only until a Sub-Total appears, and never allowed to override it.
+  let subTotalSeen = false;
+
   for (const row of rows) {
     const label = rowLabel(row);
     if (!label) continue;
@@ -172,12 +182,16 @@ function parseHtmlToQuotes(html: string): ParsedQuote[] {
     if (label === 'Repair Type') cells.forEach((c, i) => { if (i < numCompanies) repairType[i] = stripTags(c); });
     else if (label === 'Vehicle Value') cells.forEach((c, i) => { if (i < numCompanies) value[i] = stripTags(c); });
     else if (label === 'Third Party Liability') cells.forEach((c, i) => { if (i < numCompanies) tpl[i] = stripTags(c); });
-    else if (label === 'Oman Cover (Own damage only)') cells.forEach((c, i) => { if (i < numCompanies) oman[i] = stripTags(c); });
+    else if (label === 'Oman Cover' || label === 'Oman Cover (Own damage only)') cells.forEach((c, i) => { if (i < numCompanies) oman[i] = stripTags(c); });
     else if (label === 'Windscreen Excess') cells.forEach((c, i) => { if (i < numCompanies) windscreen[i] = stripTags(c); });
     else if (label === 'Excess') cells.forEach((c, i) => { if (i < numCompanies) excess[i] = toNumber(stripTags(c)); });
     else if (label === 'Premium') cells.forEach((c, i) => { if (i < numCompanies) premium[i] = toNumber(stripTags(c)); });
     else if (label === 'VAT (5%)') cells.forEach((c, i) => { if (i < numCompanies) vat[i] = toNumber(stripTags(c)); });
-    else if (label === 'Total') cells.forEach((c, i) => { if (i < numCompanies) total[i] = toNumber(stripTags(c)); });
+    else if (label === 'Sub-Total') {
+      subTotalSeen = true;
+      cells.forEach((c, i) => { if (i < numCompanies) { const t = stripTags(c); if (t) total[i] = toNumber(t); } });
+    }
+    else if (label === 'Total' && !subTotalSeen) cells.forEach((c, i) => { if (i < numCompanies) { const t = stripTags(c); if (t) total[i] = toNumber(t); } });
     else if (label === 'Advisor Comment') cells.forEach((c, i) => { if (i < numCompanies) { const t = stripTags(c); advisor[i] = t === '-' ? '' : t; } });
     else if (!NON_COVERAGE_ROWS.has(label)) {
       // coverage row: included if cell text is YES

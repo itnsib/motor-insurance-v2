@@ -7,8 +7,10 @@
 :root {
   --nsib-red: #c0122b;
   --nsib-red-dark: #8a0e20;
+  --nsib-red-deep: #6e0a18;
   --nsib-gold: #d9a441;
   --nsib-cream: #faf6ed;
+  --nsib-cream-light: #fefcf7;
   --nsib-sand: #f0e4cc;
   --nsib-ink: #2b2118;
 }
@@ -16,6 +18,69 @@
 body {
   color: var(--nsib-ink);
   background: var(--nsib-cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium page surface — a barely-there warm wash so the content area reads as
+   ivory paper rather than flat fill. Kept low-contrast so data stays dominant. */
+.nsib-app-surface {
+  background-color: var(--nsib-cream);
+  background-image:
+    radial-gradient(900px 420px at 100% -5%, rgba(217, 164, 65, 0.11), transparent 62%),
+    radial-gradient(760px 380px at -8% 108%, rgba(192, 18, 43, 0.05), transparent 60%),
+    linear-gradient(180deg, var(--nsib-cream-light) 0%, var(--nsib-cream) 48%, #f7f1e4 100%);
+  background-attachment: fixed;
+}
+
+/* Restrained sheen on the maroon header — a single soft highlight, no banding. */
+.nsib-header-sheen {
+  background-image:
+    radial-gradient(680px 200px at 12% -40%, rgba(255, 255, 255, 0.16), transparent 70%),
+    radial-gradient(520px 220px at 96% 140%, rgba(217, 164, 65, 0.16), transparent 70%);
+}
+
+/* Faint corporate weave for the maroon executive band. Decorative only —
+   kept under 10% opacity so it never competes with the figures on top. */
+.nsib-band-weave {
+  background-image:
+    repeating-linear-gradient(135deg, rgba(217, 164, 65, 0.09) 0 1px, transparent 1px 15px),
+    radial-gradient(640px 280px at 90% -35%, rgba(217, 164, 65, 0.22), transparent 68%),
+    radial-gradient(520px 260px at 2% 135%, rgba(255, 255, 255, 0.1), transparent 70%);
+}
+
+/* Warm paper wash for panel surfaces. */
+.nsib-panel-wash {
+  background-image: linear-gradient(180deg, #ffffff 0%, #fffdf8 62%, #fdf9f0 100%);
+}
+
+/* Maroon chevron on selects — the native arrow is grey and breaks the palette.
+   Applied via a class so it never lands on text inputs or textareas. */
+.nsib-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C0122B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1rem 1rem;
+}
+
+/* Deep maroon section header used across the quote builder. */
+.nsib-section-head {
+  background-image: linear-gradient(100deg, #8a0e20 0%, #6e0a18 58%, #5a0813 100%);
+}
+
+/* Hairline gold rule used as a section/edge separator. */
+.nsib-gold-rule {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(217, 164, 65, 0.55) 18%,
+    rgba(217, 164, 65, 0.75) 50%,
+    rgba(217, 164, 65, 0.55) 82%,
+    transparent 100%
+  );
 }
 
 /* Brand scrollbar */
